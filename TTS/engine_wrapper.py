@@ -13,6 +13,7 @@ from rich.progress import track
 from utils import settings
 from utils.console import print_step, print_substep
 from utils.voice import sanitize_text
+from utils.text_expander import expand_abbreviations  # Import new text expansion module
 
 DEFAULT_MAX_LENGTH: int = (
     50  # Video length variable, edit this on your own risk. It should work, but it's not supported
@@ -27,6 +28,7 @@ class TTSEngine:
         reddit_object         : The reddit object that contains the posts to read.
         path (Optional)       : The unix style path to save the mp3 files to. This must not have leading or trailing slashes.
         max_length (Optional) : The maximum length of the mp3 files in total.
+        last_clip_length      : The duration of the last generated audio clip.
 
     Notes:
         tts_module must take the arguments text and filepath.
@@ -43,6 +45,7 @@ class TTSEngine:
         self.tts_module = tts_module()
         self.reddit_object = reddit_object
 
+        # Clean the Reddit thread id to use as a directory name
         self.redditid = re.sub(r"[^\w\s-]", "", reddit_object["thread_id"])
         self.path = path + self.redditid + "/mp3"
         self.max_length = max_length
@@ -67,6 +70,7 @@ class TTSEngine:
             comment["comment_body"] = re.sub(r'\."\.', '".', comment["comment_body"])
 
     def run(self) -> Tuple[int, int]:
+        """Processes the Reddit object and converts the text into MP3 files using the chosen TTS engine."""
         Path(self.path).mkdir(parents=True, exist_ok=True)
         print_step("Saving Text to MP3 files...")
 
@@ -103,6 +107,7 @@ class TTSEngine:
         return self.length, idx
 
     def split_post(self, text: str, idx):
+        """Splits a long text into smaller parts and concatenates the resulting audio files."""
         split_files = []
         split_text = [
             x.group().strip()
@@ -144,6 +149,7 @@ class TTSEngine:
             print("OSError")
 
     def call_tts(self, filename: str, text: str):
+        """Calls the TTS engine to convert text to speech and saves the output as an MP3 file."""
         self.tts_module.run(
             text,
             filepath=f"{self.path}/{filename}.mp3",
@@ -162,6 +168,7 @@ class TTSEngine:
             self.length = 0
 
     def create_silence_mp3(self):
+        """Creates an MP3 file containing silence for concatenation purposes."""
         silence_duration = settings.config["settings"]["tts"]["silence_duration"]
         silence = AudioClip(
             make_frame=lambda t: np.sin(440 * 2 * np.pi * t),
@@ -173,10 +180,30 @@ class TTSEngine:
 
 
 def process_text(text: str, clean: bool = True):
+    """
+    Processes the input text by sanitizing, expanding abbreviations, and translating if needed.
+    
+    The function performs the following steps:
+    1. Sanitizes the text (removing unwanted characters/links).
+    2. If enabled in the config, expands abbreviations (e.g., "etc." to "etcetera").
+    3. Translates the text if a target language is specified.
+    
+    Args:
+        text (str): The original text.
+        clean (bool): Whether to clean/sanitize the text.
+
+    Returns:
+        str: The processed text ready for TTS conversion.
+    """
     lang = settings.config["reddit"]["thread"]["post_lang"]
     new_text = sanitize_text(text) if clean else text
+
+    # Expand abbreviations if enabled in config.toml
+    if settings.config["settings"].get("expand_abbreviations", False):
+        new_text = expand_abbreviations(new_text)
+
     if lang:
         print_substep("Translating Text...")
-        translated_text = translators.translate_text(text, translator="google", to_language=lang)
+        translated_text = translators.translate_text(new_text, translator="google", to_language=lang)
         new_text = sanitize_text(translated_text)
     return new_text
