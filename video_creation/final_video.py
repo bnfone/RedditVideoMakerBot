@@ -249,7 +249,16 @@ def make_final_video(
         )
     audio_concat = ffmpeg.concat(*audio_clips, a=1, v=0)
     ffmpeg.output(
-        audio_concat, f"assets/temp/{reddit_id}/audio.mp3", **{"b:a": "192k"}
+        # audio_concat, f"assets/temp/{reddit_id}/audio.mp3", **{"b:a": "192k"} # chatGPT says that bit is bad and should be replaced with the folowing lines
+        audio_concat,
+            f"assets/temp/{reddit_id}/audio.mp3",
+            **{
+                "c:a": "libmp3lame",
+                "b:a": "192k",
+                "ar": "24000",
+                "ac": 1,
+                "sample_fmt": "s16p",
+            },
     ).overwrite_output().run(quiet=True)
 
     console.log(f"[bold green] Video Will Be: {length} Seconds Long")
@@ -324,6 +333,20 @@ def make_final_video(
                     y="(main_h-overlay_h)/2",
                 )
                 current_time += audio_clips_durations[i]
+            # Extra-Overlay: Das letzte Bild wird ab dem Zeitpunkt des letzten Audioclips bis zum Ende des Videos angezeigt.
+            background_clip = background_clip.overlay(
+                image_clips[-1],
+                enable=f"gte(t,{current_time})",
+                x="(main_w-overlay_w)/2",
+                y="(main_h-overlay_h)/2"
+            )
+                # background_clip = background_clip.overlay(
+                #     image_clips[i],
+                #     enable=f"between(t,{current_time},{current_time + audio_clips_durations[i]})",
+                #     x="(main_w-overlay_w)/2",
+                #     y="(main_h-overlay_h)/2",
+                # )
+                # current_time += audio_clips_durations[i]
     else:
         for i in range(0, number_of_clips + 1):
             image_clips.append(
@@ -427,7 +450,8 @@ def make_final_video(
                 path,
                 f="mp4",
                 **{
-                    "c:v": "h264",
+                    # "c:v": "h264",
+                    "c:v": "h264_videotoolbox", # for mac
                     "b:v": "20M",
                     "b:a": "192k",
                     "threads": multiprocessing.cpu_count(),
