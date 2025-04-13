@@ -21,6 +21,7 @@ from utils.console import print_step, print_substep
 from utils.fonts import getheight
 from utils.thumbnail import create_thumbnail
 from utils.videos import save_data
+from utils.whisper_util import transcribe_audio  # NEW: Import the Whisper utility
 
 console = Console()
 
@@ -43,7 +44,6 @@ class ProgressFfmpeg(threading.Thread):
 
     def get_latest_ms_progress(self):
         lines = self.output_file.readlines()
-
         if lines:
             for line in lines:
                 if "out_time_ms" in line:
@@ -175,7 +175,7 @@ def merge_background_audio(audio: ffmpeg, reddit_id: str):
     if background_audio_volume == 0:
         return audio  # Return the original audio
     else:
-        # sets volume to config
+        # Sets volume to config
         bg_audio = ffmpeg.input(f"assets/temp/{reddit_id}/background.mp3").filter(
             "volume",
             background_audio_volume,
@@ -198,12 +198,10 @@ def make_final_video(
         reddit_obj (dict): The reddit object that contains the posts to read.
         background_config (Tuple[str, str, str, Any]): The background config to use.
     """
-    # settings values
+    # Settings values
     W: Final[int] = int(settings.config["settings"]["resolution_w"])
     H: Final[int] = int(settings.config["settings"]["resolution_h"])
-
     opacity = settings.config["settings"]["opacity"]
-
     reddit_id = re.sub(r"[^\w\s-]", "", reddit_obj["thread_id"])
 
     allowOnlyTTSFolder: bool = (
@@ -218,9 +216,7 @@ def make_final_video(
     # Gather all audio clips
     audio_clips = list()
     if number_of_clips == 0 and settings.config["settings"]["storymode"] == "false":
-        print(
-            "No audio clips to gather. Please use a different TTS or post."
-        )  # This is to fix the TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
+        print("No audio clips to gather. Please use a different TTS or post.")
         exit()
     if settings.config["settings"]["storymode"]:
         if settings.config["settings"]["storymodemethod"] == 0:
@@ -232,13 +228,11 @@ def make_final_video(
                 for i in track(range(number_of_clips + 1), "Collecting the audio files...")
             ]
             audio_clips.insert(0, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"))
-
     else:
         audio_clips = [
             ffmpeg.input(f"assets/temp/{reddit_id}/mp3/{i}.mp3") for i in range(number_of_clips)
         ]
         audio_clips.insert(0, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"))
-
         audio_clips_durations = [
             float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/{i}.mp3")["format"]["duration"])
             for i in range(number_of_clips)
@@ -249,16 +243,15 @@ def make_final_video(
         )
     audio_concat = ffmpeg.concat(*audio_clips, a=1, v=0)
     ffmpeg.output(
-        # audio_concat, f"assets/temp/{reddit_id}/audio.mp3", **{"b:a": "192k"} # chatGPT says that bit is bad and should be replaced with the folowing lines
         audio_concat,
-            f"assets/temp/{reddit_id}/audio.mp3",
-            **{
-                "c:a": "libmp3lame",
-                "b:a": "192k",
-                "ar": "24000",
-                "ac": 1,
-                "sample_fmt": "s16p",
-            },
+        f"assets/temp/{reddit_id}/audio.mp3",
+        **{
+            "c:a": "libmp3lame",
+            "b:a": "192k",
+            "ar": "24000",
+            "ac": 1,
+            "sample_fmt": "s16p",
+        },
     ).overwrite_output().run(quiet=True)
 
     console.log(f"[bold green] Video Will Be: {length} Seconds Long")
@@ -268,23 +261,17 @@ def make_final_video(
     final_audio = merge_background_audio(audio, reddit_id)
 
     image_clips = list()
-
     Path(f"assets/temp/{reddit_id}/png").mkdir(parents=True, exist_ok=True)
 
     # Credits to tim (beingbored)
-    # get the title_template image and draw a text in the middle part of it with the title of the thread
+    # Get the title_template image and draw text in its middle section with the thread title.
     title_template = Image.open("assets/title_template.png")
-
     title = reddit_obj["thread_title"]
-
     title = name_normalize(title)
-
     font_color = "#000000"
     padding = 5
-
-    # create_fancy_thumbnail(image, text, text_color, padding
+    # Create fancy thumbnail for the title image.
     title_img = create_fancy_thumbnail(title_template, title, font_color, padding)
-
     title_img.save(f"assets/temp/{reddit_id}/png/title.png")
     image_clips.insert(
         0,
@@ -333,20 +320,13 @@ def make_final_video(
                     y="(main_h-overlay_h)/2",
                 )
                 current_time += audio_clips_durations[i]
-            # Extra-Overlay: Das letzte Bild wird ab dem Zeitpunkt des letzten Audioclips bis zum Ende des Videos angezeigt.
+            # Extra Overlay: The last image is displayed from the end of the last audio clip until the video ends.
             background_clip = background_clip.overlay(
                 image_clips[-1],
                 enable=f"gte(t,{current_time})",
                 x="(main_w-overlay_w)/2",
                 y="(main_h-overlay_h)/2"
             )
-                # background_clip = background_clip.overlay(
-                #     image_clips[i],
-                #     enable=f"between(t,{current_time},{current_time + audio_clips_durations[i]})",
-                #     x="(main_w-overlay_w)/2",
-                #     y="(main_h-overlay_h)/2",
-                # )
-                # current_time += audio_clips_durations[i]
     else:
         for i in range(0, number_of_clips + 1):
             image_clips.append(
@@ -381,23 +361,20 @@ def make_final_video(
         print_substep("The 'OnlyTTS' folder could not be found so it was automatically created.")
         os.makedirs(f"./results/{subreddit}/OnlyTTS")
 
-    # create a thumbnail for the video
+    # Create a thumbnail for the video.
     settingsbackground = settings.config["settings"]["background"]
-
     if settingsbackground["background_thumbnail"]:
         if not exists(f"./results/{subreddit}/thumbnails"):
             print_substep(
                 "The 'results/thumbnails' folder could not be found so it was automatically created."
             )
             os.makedirs(f"./results/{subreddit}/thumbnails")
-        # get the first file with the .png extension from assets/backgrounds and use it as a background for the thumbnail
         first_image = next(
             (file for file in os.listdir("assets/backgrounds") if file.endswith(".png")),
             None,
         )
         if first_image is None:
             print_substep("No png files found in assets/backgrounds", "red")
-
         else:
             font_family = settingsbackground["background_thumbnail_font_family"]
             font_size = settingsbackground["background_thumbnail_font_size"]
@@ -416,17 +393,54 @@ def make_final_video(
             thumbnailSave.save(f"./assets/temp/{reddit_id}/thumbnail.png")
             print_substep(f"Thumbnail - Building Thumbnail in assets/temp/{reddit_id}/thumbnail.png")
 
+    # --- Preserve the watermark "Background by ..." ---
     text = f"Background by {background_config['video'][2]}"
     background_clip = ffmpeg.drawtext(
         background_clip,
         text=text,
-        x=f"(w-text_w)",
-        y=f"(h-text_h)",
+        x="(w-text_w)",
+        y="(h-text_h)",
         fontsize=5,
         fontcolor="White",
         fontfile=os.path.join("fonts", "Roboto-Regular.ttf"),
     )
+
+    # --- WHISPER SUBTITLES OVERLAY IMPLEMENTATION ---
+    # Compute the duration of the title audio (title.mp3)
+    try:
+        title_info = ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]
+        title_duration = float(title_info["duration"])
+    except Exception as e:
+        title_duration = 0.0
+        print_substep("Could not determine title duration.", "red")
+
+    # Transcribe the entire merged audio using Whisper (full text)
+    subtitle_segments = transcribe_audio(f"assets/temp/{reddit_id}/audio.mp3", max_words=999)
+    for seg in subtitle_segments:
+        # Only overlay captions for segments after the title has finished.
+        if seg["end"] <= title_duration:
+            continue
+        seg_start = seg["start"] if seg["start"] >= title_duration else title_duration
+        subtitle_text = seg["text"]
+        # Wrap the text to a maximum of 30 characters per line
+        wrapped_text = "\n".join(textwrap.wrap(subtitle_text, width=30))
+        background_clip = background_clip.filter(
+            "drawtext",
+            fontfile=os.path.join("fonts", "Roboto-Bold.ttf"),
+            text=wrapped_text,
+            fontsize=30,                # Smaller font size for Whisper captions.
+            fontcolor="white",
+            borderw=2,                  # Outline width.
+            bordercolor="black",
+            # Use a conditional x expression to ensure a minimum margin of 20 pixels horizontally.
+            x="if(gte(text_w, w-40),20,(w-text_w)/2)",
+            y="(h-text_h)/2",           # Center vertically
+            enable=f"between(t,{seg_start},{seg['end']})"
+        )
+    # Scale the background to the desired resolution.
     background_clip = background_clip.filter("scale", W, H)
+    # --- END WHISPER SUBTITLES OVERLAY IMPLEMENTATION ---
+
     print_step("Rendering the video 🎥")
     from tqdm import tqdm
 
@@ -440,9 +454,7 @@ def make_final_video(
     defaultPath = f"results/{subreddit}"
     with ProgressFfmpeg(length, on_update_example) as progress:
         path = defaultPath + f"/{filename}"
-        path = (
-            path[:251] + ".mp4"
-        )  # Prevent a error by limiting the path length, do not change this.
+        path = path[:251] + ".mp4"  # Limit the path length to avoid errors.
         try:
             ffmpeg.output(
                 background_clip,
@@ -450,8 +462,7 @@ def make_final_video(
                 path,
                 f="mp4",
                 **{
-                    # "c:v": "h264",
-                    "c:v": "h264_videotoolbox", # for mac
+                    "c:v": "h264_videotoolbox",  # for mac
                     "b:v": "20M",
                     "b:a": "192k",
                     "threads": multiprocessing.cpu_count(),
@@ -469,9 +480,7 @@ def make_final_video(
     pbar.update(100 - old_percentage)
     if allowOnlyTTSFolder:
         path = defaultPath + f"/OnlyTTS/{filename}"
-        path = (
-            path[:251] + ".mp4"
-        )  # Prevent a error by limiting the path length, do not change this.
+        path = path[:251] + ".mp4"  # Limit path length.
         print_step("Rendering the Only TTS Video 🎥")
         with ProgressFfmpeg(length, on_update_example) as progress:
             try:
