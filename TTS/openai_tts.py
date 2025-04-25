@@ -69,6 +69,7 @@ class OpenAITTS:
             "model": model,
             "voice": voice,
             "input": text,
+            "speed": 1.1, 
             "response_format": "mp3"  # allowed formats: "mp3", "aac", "opus", "flac", "pcm" or "wav"
         }
         headers = {
