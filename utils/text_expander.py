@@ -61,7 +61,23 @@ def expand_abbreviations(text: str) -> str:
         r'\blbs\b': 'punds',
         r'\bafaik\b': 'as far as I know',
         r'\bbrb\b': 'be right back',
-        r'\babt\b': 'about'
+        r'\babt\b': 'about',
+        r'\bsmh\b': 'shaking my head',
+        r'\bfr\b': 'for real',
+        r'\bsmth\b': 'something',
+        r'\bthx\b': 'thanks',
+        r'\birl\b': 'in real life',
+        r'\bomg\b': 'oh my god',
+        r'\bwtbs\b': 'what the big surprise',
+        r'\btysm\b': 'thank you so much',
+        r'\bty\b': 'thank you',
+        r'\blmao\b': 'laughing my ass off',
+        r'\btbf\b': 'to be fair',
+        r'\btbh\b': 'to be honest',
+        r'\brn\b': 'right now',
+        r'\btifu\b': 'today i fucked up',
+        r'\btl;dr\b': 'to long dont read',
+        r'\btldr\b': 'to long dont read'
     }
 
     # Perform simple case-insensitive replacements
