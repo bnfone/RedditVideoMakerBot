@@ -24,6 +24,7 @@ from video_creation.background import (
 from video_creation.final_video import make_final_video
 from video_creation.screenshot_downloader import get_screenshots_of_reddit_posts
 from video_creation.voices import save_text_to_mp3
+from utils.rewriter import rewrite_reddit
 
 __VERSION__ = "3.3.0"
 
@@ -46,6 +47,10 @@ checkversion(__VERSION__)
 def main(POST_ID=None) -> None:
     global redditid, reddit_object
     reddit_object = get_subreddit_threads(POST_ID)
+    # optional: nur im Story-Mode den Text einmalig umschreiben
+    if settings.config["settings"]["rewriter"]["enabled"]:
+        print("⟳ Story umschreiben via OpenAI-Rewriter…")
+        reddit_object = rewrite_reddit(reddit_object)
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
@@ -123,6 +128,7 @@ if __name__ == "__main__":
         config["settings"]["tts"]["tiktok_sessionid"] = "REDACTED"
         config["settings"]["tts"]["elevenlabs_api_key"] = "REDACTED"
         config["settings"]["tts"]["openai_api_key"] = "REDACTED"
+        config["settings"]["rewriter"]["api_token"] = "REDACTED"
         print_step(
             f"Sorry, something went wrong with this version! Try again, and feel free to report this issue at GitHub or the Discord community.\n"
             f"Version: {__VERSION__} \n"
