@@ -495,7 +495,17 @@ def make_final_video(
         old_percentage = pbar.n
         pbar.update(100 - old_percentage)
     pbar.close()
-    save_data(subreddit, filename + ".mp4", title, idx, background_config["video"][2])
+    #save_data(subreddit, filename + ".mp4", title, idx, background_config["video"][2], reddit_obj.get("author", ""),)
+    save_data(
+        subreddit,
+        filename + ".mp4",
+        title,
+        idx,
+        background_config["video"][2],
+        reddit_obj.get("author", ""),
+        reddit_obj.get("upvotes", 0),
+        reddit_obj.get("num_comments", 0),
+    )
     print_step("Removing temporary files 🗑")
     cleanups = cleanup(reddit_id)
     print_substep(f"Removed {cleanups} temporary files 🗑")
