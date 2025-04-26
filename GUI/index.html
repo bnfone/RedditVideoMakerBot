@@ -54,7 +54,7 @@
                     video += '<a href="http://localhost:4000/results/' + value.subreddit + '/' + value.filename + '" class="btn btn-sm btn-outline-secondary" download>Download</a>';
                     video += '</div>';
                     video += '<div class="btn-group">';
-                    video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + getCopyData(value.subreddit, value.reddit_title, value.filename, value.background_credit) + '"><i class="bi bi-card-text"></i></button>';
+                    video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + getCopyData(value.subreddit, value.author, value.reddit_title, value.filename, value.background_credit) + '"><i class="bi bi-card-text"></i></button>';
                     video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #Shorts #reddit"><i class="bi bi-youtube"></i></button>';
                     video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #reddit"><i class="bi bi-instagram"></i></button>';
                     video += '</div>';
@@ -125,27 +125,30 @@
         hideTooltip(e.trigger);
     });
 
-    function getCopyData(subreddit, reddit_title, filename, background_credit) {
-
-        if (subreddit == undefined) {
-            subredditCopy = "";
-        } else {
-            subredditCopy = "r/" + subreddit + "\n\n";
+    function getCopyData(subreddit, author, reddit_title, filename, background_credit) {
+        let copyData = "";
+    
+        // 1) author
+        if (author) {
+            copyData += "u/" + author + "\n\n";
         }
-
+    
+        // 2) subreddit
+        if (subreddit) {
+            copyData += "r/" + subreddit + "\n\n";
+        }
+    
+        // 3) title / filename
         const file = filename.slice(0, -4);
-        if (reddit_title == file) {
-            titleCopy = reddit_title;
-        } else {
-            titleCopy = file;
-        }
-
-        var copyData = "";
-        copyData += subredditCopy;
-        copyData += titleCopy;
-        copyData += "\n\nBackground credit: " + background_credit;
+        const title = (reddit_title === file) ? reddit_title : file;
+        copyData += title + "\n\n";
+    
+        // 4) background credit
+        copyData += "Background credit: " + background_credit;
+    
         return copyData;
     }
+    
 
     function getLink(subreddit, id, reddit_title) {
         if (subreddit == undefined) {
