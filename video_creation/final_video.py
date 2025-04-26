@@ -92,7 +92,6 @@ def prepare_background(reddit_id: str, W: int, H: int) -> str:
             output_path,
             an=None,
             **{
-                "c:v": "h264",
                 "b:v": "20M",
                 "b:a": "192k",
                 "threads": multiprocessing.cpu_count(),
@@ -277,9 +276,7 @@ def make_final_video(
 
     title = reddit_obj["thread_title"]
 
-    title = name_normalize(title)
 
-    font_color = "#000000"
     padding = 5
 
     # create_fancy_thumbnail(image, text, text_color, padding
@@ -481,7 +478,6 @@ def make_final_video(
                     path,
                     f="mp4",
                     **{
-                        "c:v": "h264",
                         "b:v": "20M",
                         "b:a": "192k",
                         "threads": multiprocessing.cpu_count(),

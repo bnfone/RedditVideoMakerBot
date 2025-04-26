@@ -33,7 +33,7 @@ def check_done(
     return redditobj
 
 
-def save_data(subreddit: str, filename: str, reddit_title: str, reddit_id: str, credit: str):
+def save_data(subreddit: str, filename: str, reddit_title: str, reddit_id: str, credit: str, author: str, upvotes: int, num_comments: int):
     """Saves the videos that have already been generated to a JSON file in video_creation/data/videos.json
 
     Args:
@@ -54,6 +54,9 @@ def save_data(subreddit: str, filename: str, reddit_title: str, reddit_id: str, 
             "background_credit": credit,
             "reddit_title": reddit_title,
             "filename": filename,
+            "author": author,
+            "upvotes": upvotes,
+            "num_comments": num_comments,
         }
         done_vids.append(payload)
         raw_vids.seek(0)

@@ -104,6 +104,13 @@ def get_subreddit_threads(POST_ID: str):
     upvotes = submission.score
     ratio = submission.upvote_ratio * 100
     num_comments = submission.num_comments
+    
+    # store author, upvotes and comment count in the reddit_obj
+    content["author"]       = submission.author.name if submission.author else ""
+    content["upvotes"]      = upvotes
+    content["num_comments"] = num_comments
+    
+    
     threadurl = f"https://new.reddit.com/{submission.permalink}"
 
     print_substep(f"Video will be: {submission.title} :thumbsup:", style="bold green")
