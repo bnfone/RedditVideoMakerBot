@@ -50,6 +50,7 @@ def make_final_video(
     storymode      = settings.config["settings"]["storymode"]
     storymethod    = settings.config["settings"]["storymodemethod"]
     kok_captioned  = settings.config["settings"]["tts"].get("kokoro_captioned", False)
+    caption_mode   = settings.config["settings"]["captions"].get("caption_mode", "default_PNG")
 
     reddit_id = re.sub(r"[^\w\s-]", "", reddit_obj["thread_id"])
     title     = reddit_obj["thread_title"]
@@ -112,10 +113,22 @@ def make_final_video(
         ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
     )
 
+    # ❷ ENTWEDER  Subtitle-Route  (Kokoro  ODER  Whisper)  ODER  PNG-Route
     # ─────────────────────────────────────────────────────────────────────────
-    # ❷ ENTWEDER  Subtitle-Route  ODER  PNG-Route
-    # ─────────────────────────────────────────────────────────────────────────
-    if storymode and kok_captioned:
+    if caption_mode == "whisper":
+        from utils.whisper_captions import generate_whisper_ass
+        ass_path = generate_whisper_ass(
+            audio_path   = f"assets/temp/{reddit_id}/audio.mp3",
+            reddit_id    = reddit_id,
+            skip_seconds = title_duration               # Dauer des Thumbnail-Titels
+                            if settings.config["settings"]["captions"]["start_after_title"]
+                            else 0.0,
+        )
+        overlays = [(title_clip, 0.0, title_duration)]
+        background_clip = overlay_images_on_background(background_clip, overlays)
+        background_clip = background_clip.filter("subtitles", ass_path)
+
+    elif storymode and kok_captioned:
         # --------------------------------------------------
         #  a)   Kapitionierte ASS-Datei bauen
         # --------------------------------------------------
