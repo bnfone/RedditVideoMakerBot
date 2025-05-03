@@ -29,8 +29,12 @@ from video_creation.background_utils import prepare_background
 from video_creation.naming_utils import name_normalize
 from video_creation.progress import ProgressFfmpeg
 from video_creation.overlay_utils import overlay_images_on_background
+from video_creation.caption_utils import build_ass
+
 
 console = Console()
+
+
 def make_final_video(
     number_of_clips: int,
     length: int,
@@ -40,11 +44,12 @@ def make_final_video(
     # ─────────────────────────────────────────────────────────────────────────
     # BASIC CONSTANTS
     # ─────────────────────────────────────────────────────────────────────────
-    W: Final[int] = int(settings.config["settings"]["resolution_w"])
-    H: Final[int] = int(settings.config["settings"]["resolution_h"])
-    opacity      = settings.config["settings"]["opacity"]
-    storymode    = settings.config["settings"]["storymode"]
-    storymethod  = settings.config["settings"]["storymodemethod"]
+    W: Final[int]  = int(settings.config["settings"]["resolution_w"])
+    H: Final[int]  = int(settings.config["settings"]["resolution_h"])
+    opacity        = settings.config["settings"]["opacity"]
+    storymode      = settings.config["settings"]["storymode"]
+    storymethod    = settings.config["settings"]["storymodemethod"]
+    kok_captioned  = settings.config["settings"]["tts"].get("kokoro_captioned", False)
 
     reddit_id = re.sub(r"[^\w\s-]", "", reddit_obj["thread_id"])
     title     = reddit_obj["thread_title"]
@@ -62,102 +67,140 @@ def make_final_video(
     background_clip = ffmpeg.input(prepare_background(reddit_id, W=W, H=H))
 
     # ─────────────────────────────────────────────────────────────────────────
-    # AUDIO - collect → concat → (optionales) BG-Audio hinzufügen
+    # AUDIO – collect → concat
     # ─────────────────────────────────────────────────────────────────────────
     if number_of_clips == 0 and not storymode:
         console.log("[red]No audio clips available – aborting.")
         exit()
 
     if storymode:
-        if storymethod == 0:  # ► nur Titel + ein einziges Story-Audio
+        if storymethod == 0:
             audio_clips = [
                 ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"),
                 ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio.mp3"),
             ]
-        else:                 # ► Titel + mehrere postaudio-X.mp3
+        else:  # storymethod == 1
             audio_clips = [
                 ffmpeg.input(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")
                 for i in range(number_of_clips + 1)
             ]
             audio_clips.insert(0, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"))
-    else:  # ► Comment-Modus
+    else:
         audio_clips = [
             ffmpeg.input(f"assets/temp/{reddit_id}/mp3/{i}.mp3") for i in range(number_of_clips)
         ]
         audio_clips.insert(0, ffmpeg.input(f"assets/temp/{reddit_id}/mp3/title.mp3"))
 
     concat_audio_files(audio_clips, f"assets/temp/{reddit_id}/audio.mp3")
-    console.log(f"[bold green]Video will be {length} s long")
-
     base_audio  = ffmpeg.input(f"assets/temp/{reddit_id}/audio.mp3")
     final_audio = merge_background_audio(base_audio, reddit_id)
 
+    console.log(f"[bold green]Video will be {length} s long")
+
     # ─────────────────────────────────────────────────────────────────────────
-    # IMAGES - einsammeln + Dauer-Liste erzeugen
+    # ❶ TITLE-THUMBNAIL (immer)  ─ build once
     # ─────────────────────────────────────────────────────────────────────────
     screenshot_w = int(W * 0.45)
-    image_clips: list[ffmpeg.nodes.FilterableStream] = []
-    durations  : list[float] = []
-
-    # ► Titelbild erzeugen
-    title_img = create_fancy_thumbnail(Image.open("assets/title_template.png"), title, "#fff", 5)
     Path(f"assets/temp/{reddit_id}/png").mkdir(parents=True, exist_ok=True)
-    title_img.save(f"assets/temp/{reddit_id}/png/title.png")
-    image_clips.append(
-        ffmpeg.input(f"assets/temp/{reddit_id}/png/title.png")["v"].filter("scale", screenshot_w, -1)
+
+    title_img = create_fancy_thumbnail(Image.open("assets/title_template.png"), title, "#fff", 5)
+    title_png = f"assets/temp/{reddit_id}/png/title.png"
+    title_img.save(title_png)
+
+    title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
+    title_duration = float(
+        ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
     )
 
-    if storymode:
+    # ─────────────────────────────────────────────────────────────────────────
+    # ❷ ENTWEDER  Subtitle-Route  ODER  PNG-Route
+    # ─────────────────────────────────────────────────────────────────────────
+    if storymode and kok_captioned:
+        # --------------------------------------------------
+        #  a)   Kapitionierte ASS-Datei bauen
+        # --------------------------------------------------
+        json_paths: list[str]
         if storymethod == 0:
-            image_clips.append(
-                ffmpeg.input(f"assets/temp/{reddit_id}/png/story_content.png")["v"]
-                .filter("scale", screenshot_w, -1)
-            )
-            durations.extend([
-                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]),
-                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio.mp3")["format"]["duration"]),
-            ])
-        else:
-            for i in range(number_of_clips + 1):
-                image_clips.append(
-                    ffmpeg.input(f"assets/temp/{reddit_id}/png/img{i}.png")["v"]
-                    .filter("scale", screenshot_w, -1)
-                )
-            durations.append(
-                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"])
-            )
-            durations.extend(
-                float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")["format"]["duration"])
+            json_paths = [
+                f"assets/temp/{reddit_id}/mp3/title.mp3.json",
+                f"assets/temp/{reddit_id}/mp3/postaudio.mp3.json",
+            ]
+        else:  # storymethod 1
+            json_paths = [f"assets/temp/{reddit_id}/mp3/title.mp3.json"] + [
+                f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3.json"
                 for i in range(number_of_clips + 1)
-            )
-    else:
-        for i in range(number_of_clips):  # exakt vorhandene Comment-Clips
-            img   = ffmpeg.input(f"assets/temp/{reddit_id}/png/comment_{i}.png")["v"].filter("scale", screenshot_w, -1)
-            audio = float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/{i}.mp3")["format"]["duration"])
-            image_clips.append(img)
-            durations.append(audio)
-        # Titel-Dauer vorn einfügen
-        durations.insert(
-            0, float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"])
+            ]
+
+        captions_ass = build_ass(
+            json_paths,
+            font=settings.config["settings"]["captions"]["captions_font_family"],
+            size=settings.config["settings"]["captions"]["captions_font_size"],
+            color=settings.config["settings"]["captions"]["captions_color"],
+            hlcolor=settings.config["settings"]["captions"]["captions_highlight_color"],
+            gap=float(settings.config["settings"]["tts"].get("silence_duration", 0.0)),
+            out_path=f"assets/temp/{reddit_id}/captions.ass",
         )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # OVERLAYS - Zeitfenster berechnen
-    # ─────────────────────────────────────────────────────────────────────────
-    overlays: list[tuple[ffmpeg.nodes.FilterableStream, float, float]] = []
-    t = 0.0
-    for idx, (clip, dur) in enumerate(zip(image_clips, durations)):
-        if opacity != 1 and not storymode and idx != 0:          # Titel nie transparent
-            clip = clip.filter("colorchannelmixer", aa=opacity)
+        # --------------------------------------------------
+        #  b)   Overlays: nur Titel-PNG zeigen
+        # --------------------------------------------------
+        overlays = [(title_clip, 0.0, title_duration)]
+        background_clip = overlay_images_on_background(background_clip, overlays)
 
-        end_time = length if idx == len(image_clips) - 1 and not storymode else t + dur
-        overlays.append((clip, t, end_time))
-        t += dur
+        # --------------------------------------------------
+        #  c)   Untertitel-Filter hinzufügen
+        # --------------------------------------------------
+        background_clip = background_clip.filter("subtitles", captions_ass)
 
-    background_clip = overlay_images_on_background(background_clip, overlays)
+    else:
+        # --------------------------------------------------
+        # PNG-Overlay-Pfad (alter Code)
+        # --------------------------------------------------
+        image_clips: list[ffmpeg.nodes.FilterableStream] = [title_clip]
+        durations   : list[float] = [title_duration]
+
+        if storymode:  # PNG-Story-Variante
+            if storymethod == 0:
+                image_clips.append(
+                    ffmpeg.input(f"assets/temp/{reddit_id}/png/story_content.png")["v"]
+                    .filter("scale", screenshot_w, -1)
+                )
+                durations.append(
+                    float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio.mp3")["format"]["duration"])
+                )
+            else:
+                for i in range(number_of_clips + 1):
+                    image_clips.append(
+                        ffmpeg.input(f"assets/temp/{reddit_id}/png/img{i}.png")["v"]
+                        .filter("scale", screenshot_w, -1)
+                    )
+                    durations.append(
+                        float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/postaudio-{i}.mp3")["format"]["duration"])
+                    )
+        else:          # Comment-Mode
+            for i in range(number_of_clips):
+                img_clip = ffmpeg.input(f"assets/temp/{reddit_id}/png/comment_{i}.png")["v"].filter(
+                    "scale", screenshot_w, -1
+                )
+                image_clips.append(img_clip)
+                durations.append(
+                    float(ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/{i}.mp3")["format"]["duration"])
+                )
+
+        # ► Zeitfenster + optional Opacity
+        overlays = []
+        t = 0.0
+        for idx, (clip, dur) in enumerate(zip(image_clips, durations)):
+            if opacity != 1 and not storymode and idx != 0:
+                clip = clip.filter("colorchannelmixer", aa=opacity)
+            end_time = length if (idx == len(image_clips) - 1 and not storymode) else t + dur
+            overlays.append((clip, t, end_time))
+            t += dur
+
+        background_clip = overlay_images_on_background(background_clip, overlays)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # TEXT-Overlay + Skalierung
+    # TEXT-WATERMARK   +   Skalierung
     # ─────────────────────────────────────────────────────────────────────────
     background_clip = (
         ffmpeg.drawtext(
@@ -228,7 +271,7 @@ def make_final_video(
     pbar.close()
 
     # ─────────────────────────────────────────────────────────────────────────
-    # META / CLEANUP
+    # META + CLEANUP
     # ─────────────────────────────────────────────────────────────────────────
     save_data(
         subreddit,
