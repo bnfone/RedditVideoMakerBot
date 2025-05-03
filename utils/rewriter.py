@@ -1,104 +1,89 @@
-# utils/rewriter.py
-
-import json
-import requests
+# utils/rewriter.py  ──  2025-05-03
+"""
+• Sends ONE OpenAI-Chat request in strict JSON-mode
+• Expects:  { hook: "...", body: "...", caption: "..." }
+• Stores the raw JSON in assets/temp/<reddit_id>/rewriter.json
+• Adds ai_caption to reddit_obj   (for later videos.json)
+"""
+from __future__ import annotations
+import json, os, re, requests
+from pathlib import Path
 from utils import settings
 from utils.posttextparser import posttextparser
 
 def rewrite_reddit(reddit_obj: dict) -> dict:
-    """
-    Only in story mode: Send the full story to OpenAI once,
-    get back a JSON with 'hook' and 'body', then split 'body' into sentences.
-    Comments remain unchanged; other modes bypass this completely.
-    """
     cfg = settings.config["settings"]["rewriter"]
-    # only activate when rewriter.enabled AND storymode = True
-    if not cfg["enabled"] or not settings.config["settings"]["storymode"]:
-        return reddit_obj
+    if not (cfg["enabled"] and settings.config["settings"]["storymode"]):
+        return reddit_obj                                           # bypass
 
-    endpoint = cfg["api_endpoint"]
+    # ───────────────────────────────────────────────────  OpenAI settings
+    endpoint      = cfg["api_endpoint"].rstrip("/")
     headers = {
         "Authorization": f"Bearer {cfg['api_token']}",
-        "Content-Type": "application/json",
+        "Content-Type":  "application/json",
     }
-    model   = cfg["model"]
-    prompt = cfg["prompt"]
-    
-    target_group = cfg["target_group"]
+    model         = cfg["model"]
+    prompt_tpl    = cfg["prompt"]
+    target_group  = cfg["target_group"]
+    want_caption  = cfg.get("generate_caption", True)               # new flag
 
-    def _call_api(full_text: str) -> dict:
-        """
-        Send one request that asks for a JSON { hook: "...", body: "..." }.
-        """
-        # fill in the prompt
-        story = full_text
+    # ───────────────────────────────────────────────────  helpers
+    def reddit_id() -> str:
+        return re.sub(r"[^\w\s-]", "", reddit_obj["thread_id"])
+
+    def _call_openai(full_text: str) -> dict:
+        user_prompt = (
+            "Return STRICTLY a JSON object with **exactly** three keys:\n"
+            " - hook   : catchy TikTok/Short title, ≤ 90 chars, no spoiler\n"
+            " - body   : rewritten story (~1 min read-aloud, 2nd-person, CTA, no emojis)\n"
+            " - caption: (optional) 1-2 sentence Instagram/YT description + 3-5 hashtags, ≤ 150 chars\n\n"
+            f"Target group: {target_group}\n"
+            "Don't add extra keys, arrays or markdown.\n\n"
+            f"Additional Info:\n{prompt_tpl}\n"
+            "----- ORIGINAL STORY -----\n"
+            f"{full_text}"
+        )
 
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": "You are a social media expert."},
-                {"role": "user", "content":
-                    "Please output a JSON object with two fields:\n\n"
-                    f"1) 'hook': an exciting TikTok video title (max. 90 chars) that teases but does not spoil the story, tailored to my target group: {target_group}.\n"
-                    "2) 'body': the rewritten story text, preserving original meaning, ~1.1 minute read-aloud, engaging, lively, youthful, direct ('you'), TikTok-compliant.\n\n"
-                    "Do NOT include any extra keys. Respond ONLY with valid JSON. Do not use any Emojis!\n\n"
-                    f"Additional Info:\n{prompt}"
-                    f"STORY:\n{story}"
-                }
+                {"role": "system", "content": "You are a social-media copywriter."},
+                {"role": "user",   "content": user_prompt},
             ],
+            "response_format": {"type": "json_object"},             # ← JSON-mode!
             "temperature": 0.7,
             "top_p": 0.9,
-            "n": 1,
         }
 
-        # DEBUG: outgoing request
-        print("\n--- Rewriter Debug ---")
-        print(">> POST", endpoint)
-        print(">> Payload:")
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        r = requests.post(f"{endpoint}/chat/completions", headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]         # already pure JSON
 
-        response = requests.post(endpoint, headers=headers, json=payload)
-        print("<< Status code:", response.status_code)
-        print("<< Raw response:")
-        print(response.text)
+    # ───────────────────────────────────────────────────  workflow
+    full_story = " ".join(reddit_obj["thread_post"]) \
+        if settings.config["settings"]["storymodemethod"] == 1 else reddit_obj["thread_post"]
 
-        response.raise_for_status()
-        data = response.json()
+    print("⟳ Rewriter: requesting OpenAI JSON …")
+    raw_json = _call_openai(full_story)
 
-        # extract the assistant's content and parse JSON
-        text = data["choices"][0]["message"]["content"]
-        print("<< Assistant raw content:")
-        print(text)
+    # save raw response for debugging / reuse
+    temp_dir = Path(f"assets/temp/{reddit_id()}")
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    (temp_dir / "rewriter.json").write_text(raw_json, encoding="utf-8")
 
-        try:
-            result = json.loads(text)
-        except json.JSONDecodeError as e:
-            print("!! JSON parse error:", e)
-            # fallback: wrap entire text as body
-            result = {"hook": reddit_obj["thread_title"], "body": full_text}
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError:
+        print("⚠ Rewriter: invalid JSON – falling back to original text.")
+        return reddit_obj
 
-        print("<< Parsed result:", result)
-        print("--- End Rewriter Debug ---\n")
-        return result
+    reddit_obj["thread_title"] = data.get("hook", reddit_obj["thread_title"])
 
-    # 1) Combine all story paragraphs into one text blob
-    if settings.config["settings"]["storymodemethod"] == 1:
-        full_story = " ".join(reddit_obj["thread_post"])
-    else:
-        full_story = reddit_obj["thread_post"]
+    body = data.get("body", full_story)
+    reddit_obj["thread_post"] = (
+        posttextparser(body) if isinstance(body, str) else body
+    )
 
-    # 2) Call the API once
-    print("⟳ Rewriter: sending full story to OpenAI for hook+body…")
-    api_output = _call_api(full_story)
-
-    # 3) Replace title and post content
-    reddit_obj["thread_title"] = api_output.get("hook", reddit_obj["thread_title"])
-    # split body into sentences for TTS
-    body_text = api_output.get("body", full_story)
-    if isinstance(body_text, str):
-        reddit_obj["thread_post"] = posttextparser(body_text)
-    else:
-        # if somehow already a list, trust it
-        reddit_obj["thread_post"] = body_text
+    reddit_obj["ai_caption"] = data.get("caption", "") if want_caption else ""
 
     return reddit_obj

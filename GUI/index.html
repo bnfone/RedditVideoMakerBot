@@ -54,9 +54,13 @@
                     video += '<a href="http://localhost:4000/results/' + value.subreddit + '/' + value.filename + '" class="btn btn-sm btn-outline-secondary" download>Download</a>';
                     video += '</div>';
                     video += '<div class="btn-group">';
-                    video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + getCopyData(value.subreddit, value.author, value.reddit_title, value.filename, value.background_credit) + '"><i class="bi bi-card-text"></i></button>';
-                    video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #Shorts #reddit"><i class="bi bi-youtube"></i></button>';
-                    video += '<button type="button" data-toggle="tooltip" id="copy" data-original-title="Copy to clipboard" class="btn btn-sm btn-outline-secondary" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #reddit"><i class="bi bi-instagram"></i></button>';
+                    video += '<button type="button" data-toggle="tooltip" class="btn btn-sm btn-outline-secondary copy-btn" data-clipboard-text="' + getCopyData(value.subreddit, value.author, value.reddit_title, value.filename, value.background_credit) + '" title="Copy Reddit info"><i class="bi bi-card-text"></i></button>';
+                    video += '<button type="button" data-toggle="tooltip" class="btn btn-sm btn-outline-secondary copy-btn" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #Shorts #reddit" title="Copy YT caption"><i class="bi bi-youtube"></i></button>';
+                    video += '<button type="button" data-toggle="tooltip" class="btn btn-sm btn-outline-secondary copy-btn" data-clipboard-text="' + checkTitle(value.reddit_title, value.filename) + ' #reddit" title="Copy IG caption"><i class="bi bi-instagram"></i></button>';
+                    /* NEW AI-Caption button (shows only if field present) */
+                    if (value.ai_caption && value.ai_caption.trim() !== "") {
+                        video += '<button type="button" data-toggle="tooltip" class="btn btn-sm btn-outline-secondary copy-btn" data-clipboard-text="' + value.ai_caption.replace(/"/g, "&quot;") + '" title="Copy AI caption"><i class="bi bi-robot"></i></button>';
+                    }
                     video += '</div>';
                     video += '<small class="text-muted">' + timeSince(value.time) + '</small>';
                     video += '</div>';
@@ -77,7 +81,7 @@
         });
     });
 
-    $('#copy').tooltip({
+    $('.copy-btn').tooltip({
         trigger: 'click',
         placement: 'bottom'
     });
@@ -106,7 +110,7 @@
         }, 1500);
     }
 
-    var clipboard = new ClipboardJS('#copy');
+    var clipboard = new ClipboardJS('.copy-btn');
 
     clipboard.on('success', function (e) {
         e.clearSelection();

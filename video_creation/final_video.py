@@ -318,6 +318,7 @@ def make_final_video(
         reddit_obj.get("author", ""),
         reddit_obj.get("upvotes", 0),
         reddit_obj.get("num_comments", 0),
+        reddit_obj.get("ai_caption", ""),
     )
 
     print_step("Removing temporary files 🗑")

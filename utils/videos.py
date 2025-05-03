@@ -33,20 +33,40 @@ def check_done(
     return redditobj
 
 
-def save_data(subreddit: str, filename: str, reddit_title: str, reddit_id: str, credit: str, author: str, upvotes: int, num_comments: int):
+def save_data(
+    subreddit: str,
+    filename: str,
+    reddit_title: str,
+    reddit_id: str,
+    credit: str,
+    author: str,
+    upvotes: int,
+    num_comments: int,
+    ai_caption: str = ""
+):
     """Saves the videos that have already been generated to a JSON file in video_creation/data/videos.json
 
     Args:
+        subreddit (str): Name of the subreddit
         filename (str): The finished video title name
-        @param subreddit:
-        @param filename:
-        @param reddit_id:
-        @param reddit_title:
+        reddit_title (str): Original Reddit title
+        reddit_id (str): Reddit post ID
+        credit (str): Background credit
+        author (str): Reddit author
+        upvotes (int): Number of upvotes
+        num_comments (int): Number of comments read
+        ai_caption (str): Optional AI-generated social caption
     """
-    with open("./video_creation/data/videos.json", "r+", encoding="utf-8") as raw_vids:
+    path = "./video_creation/data/videos.json"
+    # Open file for read+write, update in-memory list, then overwrite & truncate
+    with open(path, "r+", encoding="utf-8") as raw_vids:
         done_vids = json.load(raw_vids)
+
+        # If this reddit_id already exists, do nothing
         if reddit_id in [video["id"] for video in done_vids]:
             return  # video already done but was specified to continue anyway in the config file
+
+        # Build payload including new ai_caption field
         payload = {
             "subreddit": subreddit,
             "id": reddit_id,
@@ -57,7 +77,11 @@ def save_data(subreddit: str, filename: str, reddit_title: str, reddit_id: str, 
             "author": author,
             "upvotes": upvotes,
             "num_comments": num_comments,
+            "ai_caption": ai_caption,  # newly added
         }
         done_vids.append(payload)
+
+        # Write back and truncate to remove any leftover data
         raw_vids.seek(0)
         json.dump(done_vids, raw_vids, ensure_ascii=False, indent=4)
+        raw_vids.truncate()
