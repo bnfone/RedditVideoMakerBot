@@ -14,6 +14,7 @@ from TTS.openai_tts import OpenAITTS
 from utils import settings
 from utils.console import print_step, print_table
 from TTS.GoogleCloudTTS import GoogleCloudTTS
+from TTS.SpeechifyTTS import SpeechifyTTS 
 
 console = Console()
 
@@ -27,6 +28,7 @@ TTSProviders = {
     "OpenAI": OpenAITTS,
     "Kokoro": KokoroTTS,
     "GoogleCloud": GoogleCloudTTS,
+    "Speechify": SpeechifyTTS, 
 }
 
 

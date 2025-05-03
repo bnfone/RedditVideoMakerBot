@@ -230,7 +230,7 @@ def make_final_video(
             fontsize  = wm_size,
             fontcolor = wm_color,
             x         = "(w-text_w)/2",
-            y         = "h*0.38",
+            y         = "h*0.41",
             enable    = "gte(t,0)"
         )
     
