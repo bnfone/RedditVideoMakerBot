@@ -211,6 +211,29 @@ def make_final_video(
             t += dur
 
         background_clip = overlay_images_on_background(background_clip, overlays)
+        
+    # ─────────────────────────────────────────────────────────────────────────
+    #  WATERMARK  (nur System-Font)
+    # ─────────────────────────────────────────────────────────────────────────
+    wm_cfg = settings.config["settings"]["watermark"]
+    if wm_cfg.get("enabled", False):
+        wm_text  = wm_cfg.get("text", "")
+        wm_size  = wm_cfg.get("font_size", 36)
+        wm_opac  = wm_cfg.get("opacity", 0.25)
+        wm_color = f"White@{wm_opac}"
+        family   = wm_cfg.get("font_family", "Arial")   # → System-Font-Name!
+
+        background_clip = ffmpeg.drawtext(
+            background_clip,
+            text      = wm_text,
+            font      = family,        # <<< einzig relevanter Parameter
+            fontsize  = wm_size,
+            fontcolor = wm_color,
+            x         = "(w-text_w)/2",
+            y         = "h*0.38",
+            enable    = "gte(t,0)"
+        )
+    
 
     # ─────────────────────────────────────────────────────────────────────────
     # TEXT-WATERMARK   +   Skalierung

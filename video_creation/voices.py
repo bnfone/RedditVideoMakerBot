@@ -13,6 +13,7 @@ from TTS.TikTok import TikTok
 from TTS.openai_tts import OpenAITTS
 from utils import settings
 from utils.console import print_step, print_table
+from TTS.GoogleCloudTTS import GoogleCloudTTS
 
 console = Console()
 
@@ -25,6 +26,7 @@ TTSProviders = {
     "ElevenLabs": elevenlabs,
     "OpenAI": OpenAITTS,
     "Kokoro": KokoroTTS,
+    "GoogleCloud": GoogleCloudTTS,
 }
 
 
