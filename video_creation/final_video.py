@@ -98,38 +98,65 @@ def make_final_video(
 
     console.log(f"[bold green]Video will be {length} s long")
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # ❶ TITLE-THUMBNAIL (immer)  ─ build once
-    # ─────────────────────────────────────────────────────────────────────────
+    # ────────────────────────────────────────────────────────────────────
+    # ❶ TITLE-THUMBNAIL / OPTIONAL TEMPLATE
+    # ────────────────────────────────────────────────────────────────────
     screenshot_w = int(W * 0.45)
     Path(f"assets/temp/{reddit_id}/png").mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
-    #  Thumbnail-template from config
-    #  (Default: assets/title_template.png)
-    # ------------------------------------------------------------------
-    tpl_default = Path("assets/title_template.png")
-    tpl_path    = Path(
-        settings.config
-            .get("settings", {})
-            .get("thumbnail", {})
-            .get("template_path", str(tpl_default))
-    ).expanduser().resolve()
+    bg_cfg  = settings.config["settings"]["background"] 
+    tn_cfg  = settings.config["settings"].get("thumbnail", {})
+    use_tpl   = bg_cfg.get("background_use_template", True)
+    font_fam  = bg_cfg.get("background_thumbnail_font_family", "arial")
+    font_sz   = bg_cfg.get("background_thumbnail_font_size", 96)
+    color_cfg = bg_cfg.get("background_thumbnail_font_color", "#FFFFFF")
 
-    try:
-        thumb_src = Image.open(tpl_path)
-    except FileNotFoundError:
-        print_substep(f"[yellow]Thumbnail-Template '{tpl_path}' not found – using default.")
-        thumb_src = Image.open(tpl_default)
+    # parse color: either "#RRGGBB" or "R,G,B"
+    if isinstance(color_cfg, str) and color_cfg.startswith("#"):
+        font_color = color_cfg
+    else:
+        font_color = tuple(int(x) for x in str(color_cfg).split(","))
 
-    title_img = create_fancy_thumbnail(thumb_src, title, "#fff", 5)
-    title_png = f"assets/temp/{reddit_id}/png/title.png"
-    title_img.save(title_png)
+    if use_tpl:
+        # lade das Template (oder fallback)
+        # NEW -----------------------------------------------------------
+        # 1. prefer settings.thumbnail.template_path
+        tpl_path = tn_cfg.get("template_path")
 
-    title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
-    title_duration = float(
-        ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
-    )
+        # 2. if empty, fall back to settings.background.template_path
+        if not tpl_path:
+            tpl_path = bg_cfg.get("template_path")
+
+        # 3. and finally to the hard-coded default
+        tpl = Path(tpl_path or "assets/title_template.png")
+
+        try:
+            img = Image.open(tpl)
+        except FileNotFoundError:
+            print_substep(f"[yellow]Template '{tpl}' not found – falling back to default[/yellow]")
+            img = Image.open("assets/title_template.png")
+        # ---------------------------------------------------------------
+
+        # erzeuge Fancy Thumbnail mit konfigurierten Parametern
+        title_img = create_fancy_thumbnail(
+            img,
+            title,
+            font_color,
+            padding=5,
+            wrap=35,
+            font_family=font_fam,
+            font_size=font_sz,
+        )
+        title_png = f"assets/temp/{reddit_id}/png/title.png"
+        title_img.save(title_png)
+        title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
+        title_duration = float(
+            ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
+        )
+    else:
+        # kein Template → keine Overlay-Clips, Captions starten bei t=0
+        title_clip = None
+        title_duration = 0.0
 
     # ❷ ENTWEDER  Subtitle-Route  (Kokoro  ODER  Whisper)  ODER  PNG-Route
     # ─────────────────────────────────────────────────────────────────────────
@@ -138,12 +165,11 @@ def make_final_video(
         ass_path = generate_whisper_ass(
             audio_path   = f"assets/temp/{reddit_id}/audio.mp3",
             reddit_id    = reddit_id,
-            skip_seconds = title_duration               # Dauer des Thumbnail-Titels
-                            if settings.config["settings"]["captions"]["start_after_title"]
-                            else 0.0,
+            skip_seconds = title_duration if settings.config["settings"]["captions"]["start_after_title"] else 0.0,
         )
-        overlays = [(title_clip, 0.0, title_duration)]
-        background_clip = overlay_images_on_background(background_clip, overlays)
+        # nur wenn Template gezogen wurde, legen wir vorher ein Overlay:
+        if title_clip:
+            background_clip = overlay_images_on_background(background_clip, [(title_clip, 0.0, title_duration)])
         background_clip = background_clip.filter("subtitles", ass_path)
 
     elif storymode and kok_captioned:
