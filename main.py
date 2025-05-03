@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-import math
-import sys
+import math, sys, argparse
 from os import name
 from pathlib import Path
 from subprocess import Popen
@@ -84,6 +83,19 @@ def shutdown() -> NoReturn:
 
 
 if __name__ == "__main__":
+    # ---------------------------------------------------------------------
+    #  CLI-Arguments
+    # ---------------------------------------------------------------------
+    parser = argparse.ArgumentParser(
+        description="RedditVideoMakerBot – optional own config file",
+    )
+    parser.add_argument(
+        "-c", "--config",
+        default="config.toml",
+        help="path to alternative config file (default: config.toml)",
+    )
+    args = parser.parse_args()
+
     if sys.version_info.major != 3 or sys.version_info.minor not in [10, 11]:
         print(
             "Hey! Congratulations, you've made it so far (which is pretty rare with no Python 3.10). Unfortunately, this program only works on Python 3.10. Please install Python 3.10 and try again."
@@ -91,8 +103,10 @@ if __name__ == "__main__":
         sys.exit()
     ffmpeg_install()
     directory = Path().absolute()
+    config_path = Path(args.config).expanduser().resolve()
     config = settings.check_toml(
-        f"{directory}/utils/.config.template.toml", f"{directory}/config.toml"
+        f"{directory}/utils/.config.template.toml",
+        str(config_path),                     # <-- new
     )
     config is False and sys.exit()
 
