@@ -104,7 +104,25 @@ def make_final_video(
     screenshot_w = int(W * 0.45)
     Path(f"assets/temp/{reddit_id}/png").mkdir(parents=True, exist_ok=True)
 
-    title_img = create_fancy_thumbnail(Image.open("assets/title_template.png"), title, "#fff", 5)
+    # ------------------------------------------------------------------
+    #  Thumbnail-template from config
+    #  (Default: assets/title_template.png)
+    # ------------------------------------------------------------------
+    tpl_default = Path("assets/title_template.png")
+    tpl_path    = Path(
+        settings.config
+            .get("settings", {})
+            .get("thumbnail", {})
+            .get("template_path", str(tpl_default))
+    ).expanduser().resolve()
+
+    try:
+        thumb_src = Image.open(tpl_path)
+    except FileNotFoundError:
+        print_substep(f"[yellow]Thumbnail-Template '{tpl_path}' not found – using default.")
+        thumb_src = Image.open(tpl_default)
+
+    title_img = create_fancy_thumbnail(thumb_src, title, "#fff", 5)
     title_png = f"assets/temp/{reddit_id}/png/title.png"
     title_img.save(title_png)
 

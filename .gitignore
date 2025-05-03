@@ -249,3 +249,5 @@ config.toml
 
 
 config.*.toml
+
+title_template.*.png
