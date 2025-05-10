@@ -36,18 +36,23 @@ expand_abbreviations = { optional = true, type = "bool", default = false, exampl
 
 
 [settings.background]
-background_video = { optional = true, default = "minecraft", example = "rocket-league", options = ["minecraft", "gta", "rocket-league", "motor-gta", "csgo-surf", "cluster-truck", "minecraft-2","minecraft-3","multiversus","fall-guys","steep", ""], explanation = "Sets the background for the video based on game name" }
-background_audio = { optional = true, default = "lofi", example = "chill-summer", options = ["lofi","lofi-2","chill-summer",""], explanation = "Sets the background audio for the video" }
+background_video = { optional = true, default = "minecraft", example = "rocket-league", options = ["minecraft", "gta", "rocket-league", "motor-gta", "csgo-surf", "cluster-truck", "minecraft-2","minecraft-3", "minecraft-4", "minecraft-5", "minecraft-2025-05-02","multiversus","fall-guys","steep", "satisfying-1", "nature", "drone",   ""], explanation = "Sets the background for the video based on game name" }
+background_audio = { optional = true, default = "lofi", example = "chill-summer", options = ["lofi","lofi-2","lofi-3","chill-summer","suspense", "cinematic","calm",  ""], explanation = "Sets the background audio for the video" }
 background_audio_volume = { optional = true, type = "float", nmin = 0, nmax = 1, default = 0.15, example = 0.05, explanation="Sets the volume of the background audio. If you don't want background audio, set it to 0.", oob_error = "The volume HAS to be between 0 and 1", input_error = "The volume HAS to be a float number between 0 and 1"}
 enable_extra_audio = { optional = true, type = "bool", default = false, example = false, explanation="Used if you want to render another video without background audio in a separate folder", input_error = "The value HAS to be true or false"}
 background_thumbnail = { optional = true, type = "bool", default = false, example = false, options = [true, false,], explanation = "Generate a thumbnail for the video (put a thumbnail.png file in the assets/backgrounds directory.)" }
 background_thumbnail_font_family = { optional = true, default = "arial", example = "arial", explanation = "Font family for the thumbnail text" }
 background_thumbnail_font_size = { optional = true, type = "int", default = 96, example = 96, explanation = "Font size in pixels for the thumbnail text" }
-background_thumbnail_font_color = { optional = true, default = "255,255,255", example = "255,255,255", explanation = "Font color in RGB format for the thumbnail text" }
+background_thumbnail_font_color = { optional = true, default = "#FFFFFF", example = "#FF0000", explanation = "Font color for the thumbnail text; supports hex (#RRGGBB) or comma-separated RGB" }
+background_use_template = { optional = true, type = "bool", default = true, example = false, explanation = "If false, skip using the thumbnail template and start captions immediately" }
+
+
+[settings.thumbnail]
+template_path = { optional = true, type = "str", default = "assets/title_template.png", example = "assets/thumbnails/my_custom_template.png", explanation = "Relative or absolute path to the PNG/JPG that will be used as base for the video thumbnail" }
 
 [settings.tts]
 random_voice = { optional = false, type = "bool", default = true, example = true, options = [true, false,], explanation = "Randomizes the voice used for each comment" }
-elevenlabs_voice_name = { optional = false, default = "Bella", example = "Bella", explanation = "The voice used for elevenlabs", options = ["Adam", "Antoni", "Arnold", "Bella", "Domi", "Elli", "Josh", "Rachel", "Sam", ] }
+elevenlabs_voice_name = { optional = false, default = "Bella", example = "Bella", explanation = "The voice used for elevenlabs", options = ["Adam", "Antoni", "Arnold", "Bella", "Domi", "Elli", "Josh", "Rachel", "Sam", "Laura" ] }
 elevenlabs_api_key = { optional = true, example = "21f13f91f54d741e2ae27d2ab1b99d59", explanation = "Elevenlabs API key" }
 aws_polly_voice = { optional = false, default = "Matthew", example = "Matthew", explanation = "The voice used for AWS Polly" }
 streamlabs_polly_voice = { optional = false, default = "Matthew", example = "Matthew", explanation = "The voice used for Streamlabs Polly" }
@@ -59,5 +64,60 @@ silence_duration = { optional = true, example = "0.1", explanation = "Time in se
 no_emojis = { optional = false, type = "bool", default = false, example = false, options = [true, false,], explanation = "Whether to remove emojis from the comments" }
 openai_api_url = { optional = true, default = "https://api.openai.com/v1/", example = "https://api.openai.com/v1/", explanation = "The API endpoint URL for OpenAI TTS generation" }
 openai_api_key = { optional = true, example = "sk-abc123def456...", explanation = "Your OpenAI API key for TTS generation" }
-openai_voice_name = { optional = false, default = "alloy", example = "alloy", explanation = "The voice used for OpenAI TTS generation", options = ["alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "af_heart"] }
+openai_voice_name = { optional = false, default = "alloy", example = "alloy", explanation = "The voice used for OpenAI TTS generation", options = ["alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "af_heart", "af_alloy", "af_alloy+af_heart", "ff_siwis", "af_sarah", "am_puck", "am_fenrir", "am_fenrir+am_puck+af_heart"] }
 openai_model = { optional = false, default = "tts-1", example = "tts-1", explanation = "The model variant used for OpenAI TTS generation", options = ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"] }
+# Kokoro TTS configuration
+kokoro_url = { optional = false, default = "https://api.kokoro.example", example = "https://api.kokoro.example", explanation = "Base URL for your Kokoro TTS service" }
+kokoro_api_key = { optional = false, example = "sk-yourkokorokey…", explanation = "Your API key for Kokoro TTS authentication" }
+kokoro_voice = { optional = false, default = "af_heart", example = "af_heart", explanation = "Voice identifier to use for Kokoro TTS", options = ["af_heart","af_alloy","ff_siwis","af_sarah","am_puck","am_fenrir", "am_fenrir+am_puck+af_heart"] }
+kokoro_model = { optional = false, default = "kokoro", example = "kokoro", explanation = "Model variant for Kokoro TTS", options = ["tts-1","tts-1-hd","kokoro"] }
+kokoro_captioned = { optional = true, default = false, example = false, explanation = "Whether to use the captioned_speech endpoint (for word-level timestamps)" }
+# ─── Google Cloud TTS ──────────────────────────────────────────────────────────
+gcloud_sa_json        = { optional = true,  default = "gcloud_sa.json", explanation = "Pfad zur Service-Account-JSON. Wenn leer, nutzt das SDK GOOGLE_APPLICATION_CREDENTIALS." }
+gcloud_voice          = { optional = false, default = "en-US-Standard-A", example = "en-US-Neural2-D", explanation = "Name der Google-Cloud-Stimme (→ list_voices API)" }
+gcloud_language_code  = { optional = false, default = "en-US", example = "de-DE", explanation = "Sprache / Region" }
+gcloud_speed          = { optional = true,  type = "float", default = 1.0, nmin = 0.25, nmax = 4.0, explanation = "Sprech­geschwindigkeit 0.25–4.0" }
+# ── Speechify TTS ────────────────────────────────────────────────────────────
+speechify_api_key        = { optional = true, example = "sk-speechify-key123", explanation = "API key from https://console.sws.speechify.com" }
+speechify_voice_id       = { optional = false, default = "simba", explanation = "Default voice_id; find IDs via /v1/voices or playground" }
+speechify_audio_format   = { optional = true, default = "mp3", options = ["mp3","wav","ogg","aac"], explanation = "Output format" }
+speechify_language_code  = { optional = true, default = "", explanation = "e.g. en-US, de-DE. Leave blank to auto-detect." }
+speechify_model          = { optional = true, default = "simba-english", options = ["simba-english","simba-multilingual"], explanation = "Synthesis model" }
+
+
+[settings.captions]
+# Caption rendering settings
+captions_font_family = { optional = false, default = "Roboto-Regular", example = "Roboto-Bold", explanation = "Font family (without .ttf) used for on-screen captions" }
+captions_font_size = { optional = false, default = 24, example = 24, explanation = "Font size in pixels for caption text" }
+captions_color = { optional = false, default = "FFFFFF", example = "FFFFFF", explanation = "Hex color code for normal caption text" }
+captions_highlight_color = { optional = false, default = "FFFF00", example = "FF0000", explanation = "Hex color code to highlight the currently spoken word" }
+###############################################################################
+#  Captions / Subtitle Rendering
+###############################################################################
+# Wann erscheinen die Captions?
+start_after_title      = { optional = true,  type = "bool",  default = true,  example = true, explanation = "Wenn 'true': Die erste Caption wird erst eingeblendet, nachdem der Thumbnail-Titel vollständig vorgelesen wurde." }
+# Ab wann soll eine Stille als „echte“ Pause gelten?
+pause_threshold        = { optional = true,  type = "float", default = 1.0, nmin = 0.1, nmax = 10, example = 1.2, explanation = "Dauer (in s) ab der eine Pause als Unterbrechung gilt – kürzere Stillen lassen die letzte Caption stehen." }
+# Wie viele Wörter werden zu einer Caption zusammengefasst?
+words_per_caption      = { optional = true,  type = "int",   default = 6, nmin = 1,  nmax = 20, example = 5,explanation = "Größe des gleitenden Fensters: So viele Wörter sieht man gleichzeitig, das gerade gesprochene Wort wird gehighlightet." }
+# Outline / Schatten (ASS-Style)
+captions_outline_px    = { optional = true,  type = "int",   default = 2, nmin = 0,  nmax = 10, example = 3, explanation = "Stärke der Kontur in Pixeln" }
+captions_shadow_px     = { optional = true,  type = "int",   default = 1, nmin = 0,  nmax = 10, example = 2, explanation = "Schatten-Versatz in Pixeln" }
+###############################################################################
+
+
+[settings.watermark]
+enabled          = { optional = true, type = "bool", default = false, example = true, explanation = "If true a small semi-transparent text watermark is shown for the whole video." }
+text             = { optional = true, default = "reddit-videomaker-bot", example = "StoryTime • @MyChannel", nmin = 1, nmax = 50, explanation = "Text that will be rendered as watermark" }
+opacity          = { optional = true, type = "float", default = 0.25, example = 0.3, nmin = 0.05, nmax = 1.0, explanation = "0 = fully transparent, 1 = opaque" }
+font_family      = { optional = true, default = "Roboto-Regular", example = "Roboto-Bold", explanation = "TTF-Font in ./fonts/…  (without extension)" }
+font_size        = { optional = true, type = "int", default = 36, example = 48, nmin = 10, nmax = 200, explanation = "Font size for the watermark" }
+
+[settings.rewriter]
+enabled = { optional = true, type = "bool", default = false, example = false, explanation = "If true, the reddit text will be rewritten" }
+api_endpoint = { optional = true, default = "", example = "https://api.openai.com/v1/chat/completions", explanation = "Endpoint for rewriting" }
+api_token    = { optional = true, default = "", example = "sk-xyz…", explanation = "API-Token for rewriting feature" }
+model        = { optional = true, default = "gpt-3.5-turbo", example = "gpt-4", explanation = "Modell for rewriting" }
+prompt       = { optional = true, default = "{text}", example = "", explanation = "Prompt-Template, {text} is gonna be replaced by the reddit content" }
+target_group = { optional = true, default = "General TikTok Viewers" , example = "General TikTok Viewers", explanation = "Entr your target audience here" }
+generate_caption = { optional = true, type = "bool", default = true, explanation = "Create an IG/YT caption" }

@@ -10,9 +10,29 @@
         "lofi-2.mp3",
         "stompsPlaylist"
     ],
+    "lofi-3":[
+        "https://www.youtube.com/watch?v=BCxTQq0UiFs",
+        "lofi-3.mp3",
+        "Art Is Sound"
+    ],
     "chill-summer":[
         "https://www.youtube.com/watch?v=EZE8JagnBI8",
         "chill-summer.mp3",
         "Mellow Vibes Radio"
+    ],
+    "cinematic":[
+        "https://www.youtube.com/watch?v=MLX88c7ZzBI",
+        "cinematic.mp3",
+        "EuphonicAlchemy"
+    ],
+    "suspense":[
+        "https://www.youtube.com/watch?v=uqkULUOurC4",
+        "suspense.mp3",
+        "MiguelAbuel"
+    ],
+    "calm":[
+        "https://www.youtube.com/watch?v=479UNr5N4UI",
+        "calm.mp3",
+        "David Diga Hernandez"
     ]
 }
