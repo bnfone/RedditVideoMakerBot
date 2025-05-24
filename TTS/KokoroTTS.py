@@ -23,6 +23,7 @@ class KokoroTTS:
             "voice": self.voice,
             "input": text,
             "response_format": "mp3",
+            "speed": 1.2,
         }
         if self.use_captioned:
             payload.update({

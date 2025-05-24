@@ -77,7 +77,8 @@ def expand_abbreviations(text: str) -> str:
         r'\brn\b': 'right now',
         r'\btifu\b': 'today i fucked up',
         r'\btl;dr\b': 'to long dont read',
-        r'\btldr\b': 'to long dont read'
+        r'\btldr\b': 'to long dont read',
+        r'\baita\b': 'am i the asshole'
     }
 
     # Perform simple case-insensitive replacements
