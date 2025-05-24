@@ -1,9 +1,20 @@
-import textwrap, os
-from PIL import ImageDraw, ImageFont
+import textwrap
+import os
+
+from PIL import ImageFont
+from pilmoji import Pilmoji
+import matplotlib.font_manager as fm
+
 from utils.fonts import getsize, getheight
 from utils.console import print_step
 from utils import settings
-import matplotlib.font_manager as fm
+
+
+def _draw_pilmoji_text(p: Pilmoji, pos, *args, **kwargs):
+    """Wrapper: Rundet Koordinaten auf int, damit PIL.Image.paste kein TypeError wirft."""
+    x, y = pos
+    p.text((int(round(x)), int(round(y))), *args, **kwargs)
+
 
 def create_fancy_thumbnail(
     image,
@@ -18,59 +29,76 @@ def create_fancy_thumbnail(
     right_margin: int = 120,
     vertical_offset: int = 30,
 ):
+    """Erstellt das Titel‑PNG (inkl. farbiger Emojis via pilmoji).
+
+    • Linksbündiger, ggf. automatisch verkleinerter Text
+    • Unterstützt System‑Fonts (Fallback: Roboto‑Bold.ttf aus ./fonts)
+    • Kanalname wird unten links gerendert
     """
-    Render a fancy thumbnail with left-aligned text over the given image,
-    shrinking the font if needed to fit horizontally.
-    """
-    # — 1) Try to find system font path by family name —
+    # ─────────────────────────────────────────── System‑/Fallback‑Font
     try:
-        font_path = fm.findfont(fm.FontProperties(family=font_family), fallback_to_default=False)
-        font = ImageFont.truetype(font_path, font_size)
+        font_path = fm.findfont(
+            fm.FontProperties(family=font_family),
+            fallback_to_default=False,
+        )
+        base_font = ImageFont.truetype(font_path, font_size)
     except Exception:
-        print_step(f"[yellow]Could not load system font “{font_family}” – falling back to Roboto.[/yellow]")
-        try:
-            font_path = os.path.join("fonts", "Roboto-Bold.ttf")
-            font = ImageFont.truetype(font_path, font_size)
-        except Exception:
-            print_step("[red]❌ Could not load fallback font Roboto-Bold.ttf – exiting.[/red]")
-            raise
+        print_step(
+            f"[yellow]Could not load system font “{font_family}” – falling back to Roboto.[/yellow]"
+        )
+        font_path = os.path.join("fonts", "Roboto-Bold.ttf")
+        base_font = ImageFont.truetype(font_path, font_size)
 
     print_step(f"Creating fancy thumbnail for: {text}")
 
-    draw = ImageDraw.Draw(image)
     img_w, img_h = image.size
 
-    # — 2) Wrap text and shrink font until it fits —
+    # ─────────────────────────────────────────── Text umbrechen & evtl. verkleinern
     lines = textwrap.wrap(text, width=wrap)
-    max_line_width = lambda f: max(getsize(f, line)[0] for line in lines)
-    available_width = img_w - left_margin - right_margin
-    current_size = font_size
+    available_w = img_w - left_margin - right_margin
 
-    while current_size > min_font_size and max_line_width(font) > available_width:
+    current_size = font_size
+    font = base_font
+
+    def max_line_w(f):
+        return max(getsize(f, ln)[0] for ln in lines)
+
+    while current_size > min_font_size and max_line_w(font) > available_w:
         current_size -= 1
         font = ImageFont.truetype(font_path, current_size)
 
-    # — 3) Center block vertically (+ offset) —
-    total_height = sum(getheight(font, line) for line in lines)
-    total_height += padding * (len(lines) - 1)
-    y = (img_h - total_height) / 2 + vertical_offset
+    # ─────────────────────────────────────────── Vertikal positionieren
+    total_h = sum(getheight(font, ln) for ln in lines) + padding * (len(lines) - 1)
+    y = (img_h - total_h) / 2 + vertical_offset
 
-    # — 4) Draw channel name at fixed position —
+    # ─────────────────────────────────────────── Kanalname‑Font
     try:
         channel_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 30)
     except Exception:
-        channel_font = font  # fallback if Roboto not found
-    draw.text(
-        (205, 825),
-        settings.config["settings"]["channel_name"],
-        font=channel_font,
-        fill=text_color,
-        align="left",
-    )
+        channel_font = font  # worst‑case fallback
 
-    # — 5) Draw the title lines —
-    for line in lines:
-        draw.text((left_margin, y), line, font=font, fill=text_color, align="left")
-        y += getheight(font, line) + padding
+    # ─────────────────────────────────────────── Zeichnen (Pilmoji rendert Emojis farbig)
+    with Pilmoji(image) as p:
+        # Kanalname (Koordinaten int‑sicher)
+        _draw_pilmoji_text(
+            p,
+            (205, 825),
+            settings.config["settings"]["channel_name"],
+            font=channel_font,
+            fill=text_color,
+            align="left",
+        )
+
+        # Titel‑Zeilen
+        for line in lines:
+            _draw_pilmoji_text(
+                p,
+                (left_margin, y),
+                line,
+                font=font,
+                fill=text_color,
+                align="left",
+            )
+            y += getheight(font, line) + padding
 
     return image
