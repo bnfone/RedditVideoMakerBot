@@ -106,3 +106,88 @@ Cyteon (cyteon) - https://github.com/cyteon
 
 ## LICENSE
 [Roboto Fonts](https://fonts.google.com/specimen/Roboto/about) are licensed under [Apache License V2](https://www.apache.org/licenses/LICENSE-2.0)
+
+
+
+
+bnfone notes:
+
+
+## ✅ Setting Up the Project with `pyenv` on macOS (Apple Silicon)
+
+If you're using macOS and want to make sure the project runs with the correct Python version (`3.10.13`), follow these steps:
+
+### 1. Install `pyenv` (if not installed)
+
+```bash
+brew install pyenv
+```
+
+### 2. Add `pyenv` to your shell (zsh)
+
+If you're using `zsh` (default on macOS), make sure to add `pyenv` to your shell startup files:
+
+```bash
+echo 'eval "$(pyenv init --path)"' >> ~/.zprofile
+echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+source ~/.zprofile
+source ~/.zshrc
+```
+
+This ensures that every terminal session uses `pyenv` properly.
+
+---
+
+### 3. Install Python 3.10.13 via pyenv
+
+```bash
+pyenv install 3.10.13
+```
+
+---
+
+### 4. Set the local Python version for the project
+
+```bash
+cd RedditVideoMakerBot
+pyenv local 3.10.13
+```
+
+This will create a `.python-version` file in the project root.
+
+---
+
+### 5. Create and activate a virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+✅ After activation, you can check:
+
+```bash
+python --version
+# Should output: Python 3.10.13
+```
+
+---
+
+### 6. Install project dependencies
+
+```bash
+pip install -r requirements.txt
+python -m playwright install
+python -m playwright install-deps
+```
+
+---
+
+That’s it! You’re ready to run the bot with:
+
+```bash
+python main.py
+```
+
+If you're using **VS Code**, make sure to select the interpreter from `.venv` via the Command Palette (`Cmd+Shift+P → Python: Select Interpreter`).
+
