@@ -60,7 +60,7 @@ def build_ass_from_words(
     shadow_px   = cfg.get("captions_shadow_px", 1)
     window_size = cfg.get("words_per_caption", 6)
     pause_thr   = cfg.get("pause_threshold", 1.0)
-    big         = int(size * 1.05)
+    big         = int(size * 1)
 
     primary   = f"&H00{_hex_to_ass(color)}"
     secondary = f"&H00{_hex_to_ass(hlcol)}"

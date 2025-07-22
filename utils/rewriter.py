@@ -34,8 +34,8 @@ def rewrite_reddit(reddit_obj: dict) -> dict:
     def _call_openai(full_text: str) -> dict:
         user_prompt = (
             "Return STRICTLY a JSON object with **exactly** three keys:\n"
-            " - hook   : catchy TikTok/Short title, ≤ 70 chars, no spoiler\n"
-            " - body   : rewritten story (~1 min read-aloud, CTA, no emojis)\n"
+            " - hook   : as the additional info describes\n"
+            " - body   : as the additional info describes\n"
             " - caption: (optional) 1-2 sentence Instagram/YT description + 3-5 hashtags, ≤ 150 chars\n\n"
             f"Target group: {target_group}\n"
             "Don't add extra keys, arrays or markdown.\n\n"
