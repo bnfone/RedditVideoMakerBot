@@ -138,6 +138,13 @@ def make_final_video(
         # ---------------------------------------------------------------
 
         # erzeuge Fancy Thumbnail mit konfigurierten Parametern
+        reddit_metrics = {
+            "subreddit": reddit_obj.get("subreddit", ""),
+            "author": reddit_obj.get("author", ""),
+            "upvotes": reddit_obj.get("upvotes", 0),
+            "num_comments": reddit_obj.get("num_comments", 0),
+            "ai_rewritten": bool(reddit_obj.get("ai_caption", "")),
+        }
         title_img = create_fancy_thumbnail(
             img,
             title,
@@ -146,6 +153,7 @@ def make_final_video(
             wrap=35,
             font_family=font_fam,
             font_size=font_sz,
+            reddit_metrics=reddit_metrics,
         )
         title_png = f"assets/temp/{reddit_id}/png/title.png"
         title_img.save(title_png)

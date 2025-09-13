@@ -49,6 +49,8 @@ background_use_template = { optional = true, type = "bool", default = true, exam
 
 [settings.thumbnail]
 template_path = { optional = true, type = "str", default = "assets/title_template.png", example = "assets/thumbnails/my_custom_template.png", explanation = "Relative or absolute path to the PNG/JPG that will be used as base for the video thumbnail" }
+show_subreddit = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Show subreddit name (r/subreddit) on thumbnail" }
+show_author = { optional = true, type = "bool", default = true, example = false, options = [true, false], explanation = "Show author name (u/username) on thumbnail alongside subreddit" }
 
 [settings.tts]
 random_voice = { optional = false, type = "bool", default = true, example = true, options = [true, false,], explanation = "Randomizes the voice used for each comment" }
@@ -114,10 +116,13 @@ font_family      = { optional = true, default = "Roboto-Regular", example = "Rob
 font_size        = { optional = true, type = "int", default = 36, example = 48, nmin = 10, nmax = 200, explanation = "Font size for the watermark" }
 
 [settings.rewriter]
-enabled = { optional = true, type = "bool", default = false, example = false, explanation = "If true, the reddit text will be rewritten" }
-api_endpoint = { optional = true, default = "", example = "https://api.openai.com/v1/chat/completions", explanation = "Endpoint for rewriting" }
-api_token    = { optional = true, default = "", example = "sk-xyz…", explanation = "API-Token for rewriting feature" }
-model        = { optional = true, default = "gpt-3.5-turbo", example = "gpt-4", explanation = "Modell for rewriting" }
-prompt       = { optional = true, default = "{text}", example = "", explanation = "Prompt-Template, {text} is gonna be replaced by the reddit content" }
-target_group = { optional = true, default = "General TikTok Viewers" , example = "General TikTok Viewers", explanation = "Entr your target audience here" }
-generate_caption = { optional = true, type = "bool", default = true, explanation = "Create an IG/YT caption" }
+enabled = { optional = true, type = "bool", default = false, example = false, explanation = "Enable AI rewriting of Reddit content" }
+api_endpoint = { optional = true, default = "https://api.openai.com/v1", example = "https://api.openai.com/v1", explanation = "OpenAI API endpoint (without /chat/completions)" }
+api_token = { optional = true, default = "", example = "sk-xyz…", explanation = "OpenAI API key for rewriting" }
+model = { optional = true, default = "gpt-4o-mini", example = "gpt-5-mini", explanation = "AI model for rewriting", options = ["gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat-latest"] }
+system_prompt = { optional = true, default = "You are a skilled content writer who creates engaging social media scripts. Write naturally and authentically while following the given instructions exactly. Always return valid JSON.", example = "You are a Gen-Z content creator...", explanation = "System prompt that defines the AI's role and behavior" }
+prompt = { optional = true, default = "Rewrite this into an engaging script:\n\n{original_story}", example = "{json_instructions}\nTarget: {target_group}\n\nRewrite this story: {original_story}", explanation = "User prompt template. Use {target_group}, {original_story}, {json_instructions} as variables" }
+target_group = { optional = true, default = "General social media viewers", example = "Gen-Z TikTok users", explanation = "Description of your target audience" }
+generate_caption = { optional = true, type = "bool", default = true, explanation = "Generate Instagram/YouTube captions with hashtags" }
+reasoning_effort = { optional = true, default = "medium", example = "high", explanation = "GPT-5 only: reasoning complexity level", options = ["minimal", "medium", "high"] }
+verbosity = { optional = true, default = "medium", example = "low", explanation = "GPT-5 only: response length control", options = ["low", "medium", "high"] }

@@ -263,4 +263,4 @@ def get_screenshots_of_reddit_posts(reddit_object: dict, screenshot_num: int):
         # close browser instance when we are done using it
         browser.close()
 
-    print_substep("Screenshots downloaded Successfully.", style="bold green")
+    print_substep("Screenshots downloaded successfully.", style="bold green")

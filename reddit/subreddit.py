@@ -109,6 +109,7 @@ def get_subreddit_threads(POST_ID: str):
     content["author"]       = submission.author.name if submission.author else ""
     content["upvotes"]      = upvotes
     content["num_comments"] = num_comments
+    content["subreddit"]    = submission.subreddit.display_name
     
     
     threadurl = f"https://new.reddit.com/{submission.permalink}"
@@ -163,5 +164,5 @@ def get_subreddit_threads(POST_ID: str):
                                 }
                             )
 
-    print_substep("Received subreddit threads Successfully.", style="bold green")
+    print_substep("Received subreddit threads successfully.", style="bold green")
     return content

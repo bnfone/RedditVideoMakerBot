@@ -48,7 +48,7 @@ def main(POST_ID=None) -> None:
     reddit_object = get_subreddit_threads(POST_ID)
     # optional: nur im Story-Mode den Text einmalig umschreiben
     if settings.config["settings"]["rewriter"]["enabled"]:
-        print("⟳ Story umschreiben via OpenAI-Rewriter…")
+        print("⟳ Rewriting story via OpenAI-Rewriter…")
         reddit_object = rewrite_reddit(reddit_object)
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
