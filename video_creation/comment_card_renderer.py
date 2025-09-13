@@ -51,11 +51,7 @@ def create_comment_card(
         text_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 40)
         upvote_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 28)
         
-        # Try to load emoji font for text rendering
-        try:
-            emoji_font = ImageFont.truetype(os.path.join("fonts", "NotoColorEmoji-Regular.ttf"), 40)
-        except OSError:
-            emoji_font = text_font  # Fallback to regular font
+        # Note: Emoji handling is done via Pilmoji, no separate emoji font needed
             
     except OSError:
         # Fallback to default font
@@ -63,7 +59,6 @@ def create_comment_card(
         author_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
         upvote_font = ImageFont.load_default()
-        emoji_font = text_font
     
     # Calculate content dimensions first - use more aggressive space usage
     available_width = width - 3 * padding  # Less conservative padding
