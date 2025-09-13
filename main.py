@@ -21,7 +21,7 @@ from video_creation.background import (
     get_background_config,
 )
 from video_creation.final_video import make_final_video
-from video_creation.screenshot_downloader import get_screenshots_of_reddit_posts
+from video_creation.comment_card_renderer import generate_comment_cards
 from video_creation.voices import save_text_to_mp3
 from utils.rewriter import rewrite_reddit
 
@@ -53,7 +53,9 @@ def main(POST_ID=None) -> None:
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
-    get_screenshots_of_reddit_posts(reddit_object, number_of_comments)
+    import re
+    reddit_id = re.sub(r"[^\w\s-]", "", reddit_object["thread_id"])
+    generate_comment_cards(reddit_object, f"assets/temp/{reddit_id}/png", number_of_comments)
     bg_config = {
         "video": get_background_config("video"),
         "audio": get_background_config("audio"),

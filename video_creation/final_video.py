@@ -24,6 +24,7 @@ from utils.videos import save_data
 import json
 
 from video_creation.thumbnail_utils import create_fancy_thumbnail
+from video_creation.dynamic_thumbnail import create_dynamic_thumbnail
 from video_creation.audio_utils import merge_background_audio, concat_audio_files
 from video_creation.background_utils import prepare_background
 from video_creation.naming_utils import name_normalize
@@ -118,49 +119,72 @@ def make_final_video(
         font_color = tuple(int(x) for x in str(color_cfg).split(","))
 
     if use_tpl:
-        # lade das Template (oder fallback)
-        # NEW -----------------------------------------------------------
-        # 1. prefer settings.thumbnail.template_path
-        tpl_path = tn_cfg.get("template_path")
+        # Check if dynamic thumbnails are enabled
+        if tn_cfg.get("dynamic_height", False):
+            print_substep("Creating dynamic thumbnail...")
+            reddit_metrics = {
+                "subreddit": reddit_obj.get("subreddit", ""),
+                "author": reddit_obj.get("author", ""),
+                "upvotes": reddit_obj.get("upvotes", 0),
+                "num_comments": reddit_obj.get("num_comments", 0),
+                "ai_rewritten": bool(reddit_obj.get("ai_caption", "")),
+            }
+            title_img = create_dynamic_thumbnail(
+                title,
+                reddit_metrics=reddit_metrics,
+                width=W,
+            )
+            title_png = f"assets/temp/{reddit_id}/png/title.png"
+            title_img.save(title_png)
+            title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
+            title_duration = float(
+                ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
+            )
+        else:
+            # Use existing template-based thumbnail system
+            # lade das Template (oder fallback)
+            # NEW -----------------------------------------------------------
+            # 1. prefer settings.thumbnail.template_path
+            tpl_path = tn_cfg.get("template_path")
 
-        # 2. if empty, fall back to settings.background.template_path
-        if not tpl_path:
-            tpl_path = bg_cfg.get("template_path")
+            # 2. if empty, fall back to settings.background.template_path
+            if not tpl_path:
+                tpl_path = bg_cfg.get("template_path")
 
-        # 3. and finally to the hard-coded default
-        tpl = Path(tpl_path or "assets/title_template.png")
+            # 3. and finally to the hard-coded default
+            tpl = Path(tpl_path or "assets/title_template.png")
 
-        try:
-            img = Image.open(tpl)
-        except FileNotFoundError:
-            print_substep(f"[yellow]Template '{tpl}' not found – falling back to default[/yellow]")
-            img = Image.open("assets/title_template.png")
-        # ---------------------------------------------------------------
+            try:
+                img = Image.open(tpl)
+            except FileNotFoundError:
+                print_substep(f"[yellow]Template '{tpl}' not found – falling back to default[/yellow]")
+                img = Image.open("assets/title_template.png")
+            # ---------------------------------------------------------------
 
-        # erzeuge Fancy Thumbnail mit konfigurierten Parametern
-        reddit_metrics = {
-            "subreddit": reddit_obj.get("subreddit", ""),
-            "author": reddit_obj.get("author", ""),
-            "upvotes": reddit_obj.get("upvotes", 0),
-            "num_comments": reddit_obj.get("num_comments", 0),
-            "ai_rewritten": bool(reddit_obj.get("ai_caption", "")),
-        }
-        title_img = create_fancy_thumbnail(
-            img,
-            title,
-            font_color,
-            padding=5,
-            wrap=35,
-            font_family=font_fam,
-            font_size=font_sz,
-            reddit_metrics=reddit_metrics,
-        )
-        title_png = f"assets/temp/{reddit_id}/png/title.png"
-        title_img.save(title_png)
-        title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
-        title_duration = float(
-            ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
-        )
+            # erzeuge Fancy Thumbnail mit konfigurierten Parametern
+            reddit_metrics = {
+                "subreddit": reddit_obj.get("subreddit", ""),
+                "author": reddit_obj.get("author", ""),
+                "upvotes": reddit_obj.get("upvotes", 0),
+                "num_comments": reddit_obj.get("num_comments", 0),
+                "ai_rewritten": bool(reddit_obj.get("ai_caption", "")),
+            }
+            title_img = create_fancy_thumbnail(
+                img,
+                title,
+                font_color,
+                padding=5,
+                wrap=35,
+                font_family=font_fam,
+                font_size=font_sz,
+                reddit_metrics=reddit_metrics,
+            )
+            title_png = f"assets/temp/{reddit_id}/png/title.png"
+            title_img.save(title_png)
+            title_clip = ffmpeg.input(title_png)["v"].filter("scale", screenshot_w, -1)
+            title_duration = float(
+                ffmpeg.probe(f"assets/temp/{reddit_id}/mp3/title.mp3")["format"]["duration"]
+            )
     else:
         # kein Template → keine Overlay-Clips, Captions starten bei t=0
         title_clip = None
@@ -168,7 +192,7 @@ def make_final_video(
 
     # ❷ ENTWEDER  Subtitle-Route  (Kokoro  ODER  Whisper)  ODER  PNG-Route
     # ─────────────────────────────────────────────────────────────────────────
-    if caption_mode == "whisper":
+    if caption_mode == "whisper" and storymode:
         from utils.whisper_captions import generate_whisper_ass
         ass_path = generate_whisper_ass(
             audio_path   = f"assets/temp/{reddit_id}/audio.mp3",

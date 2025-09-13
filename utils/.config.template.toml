@@ -51,6 +51,11 @@ background_use_template = { optional = true, type = "bool", default = true, exam
 template_path = { optional = true, type = "str", default = "assets/title_template.png", example = "assets/thumbnails/my_custom_template.png", explanation = "Relative or absolute path to the PNG/JPG that will be used as base for the video thumbnail" }
 show_subreddit = { optional = true, type = "bool", default = true, example = true, options = [true, false], explanation = "Show subreddit name (r/subreddit) on thumbnail" }
 show_author = { optional = true, type = "bool", default = true, example = false, options = [true, false], explanation = "Show author name (u/username) on thumbnail alongside subreddit" }
+background_color = { optional = true, default = "33,33,36", example = "45,45,48", explanation = "Background color for dynamic thumbnails (R,G,B format)" }
+primary_text_color = { optional = true, default = "255,255,255", example = "240,240,240", explanation = "Primary text color (titles, channel name) (R,G,B format)" }
+secondary_text_color = { optional = true, default = "180,180,180", example = "150,150,150", explanation = "Secondary text color (subreddit, metrics) (R,G,B format)" }
+profile_image_path = { optional = true, type = "str", default = "assets/profile.png", example = "assets/my_profile.jpg", explanation = "Path to profile picture (will be made circular)" }
+dynamic_height = { optional = true, type = "bool", default = false, example = true, options = [true, false], explanation = "Use dynamic height based on content instead of fixed template" }
 
 [settings.tts]
 random_voice = { optional = false, type = "bool", default = true, example = true, options = [true, false,], explanation = "Randomizes the voice used for each comment" }

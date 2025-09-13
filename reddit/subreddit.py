@@ -161,6 +161,8 @@ def get_subreddit_threads(POST_ID: str):
                                     "comment_body": top_level_comment.body,
                                     "comment_url": top_level_comment.permalink,
                                     "comment_id": top_level_comment.id,
+                                    "comment_author": top_level_comment.author.name if top_level_comment.author else "Unknown",
+                                    "comment_score": top_level_comment.score,
                                 }
                             )
 
