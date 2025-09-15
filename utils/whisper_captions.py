@@ -16,22 +16,69 @@ from video_creation.caption_utils import _hex_to_ass, _ass_time, ASS_HEAD
 def transcribe_words(
     audio_path   : str,
     *,
-    model_size   : str   = "small",
+    model_size   : str   = None,         # Auto-detect aus config
     skip_seconds : float = 0.0,          # Anfangsbereich, der komplett ignoriert wird
 ) -> List[Dict]:
     """
     Liefert eine Liste [{word, start_time, end_time}, …].
     Wörter, deren *Ende* ≤ skip_seconds liegen, werden verworfen (Thumbnail-Titel).
     *Wichtig*: Zeiten bleiben **unverändert absolut** – kein globales Re-Timing!
+    
+    Optimierte Whisper-Einstellungen für bessere Transkriptionsgenauigkeit.
     """
-    model = WhisperModel(model_size, device="auto", compute_type="int8")
-    segments, _ = model.transcribe(audio_path, word_timestamps=True)
+    # Model size aus config laden falls nicht gesetzt
+    if model_size is None:
+        model_size = settings.config["settings"]["captions"].get("whisper_model_size", "base")
+    
+    # Hardware-optimierte Whisper-Konfiguration
+    import platform
+    import torch
+    
+    # Auto-detect beste Hardware-Beschleunigung
+    if torch.cuda.is_available():
+        device = "cuda"
+        compute_type = "float16"  # NVIDIA GPU
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        device = "cpu"  # MPS nicht direkt unterstützt, aber CPU auf M1/M2 ist sehr schnell
+        compute_type = "int8"   # Optimiert für Apple Silicon
+    elif platform.processor() == 'arm':  # Apple Silicon
+        device = "cpu"
+        compute_type = "int8"   # Optimal für M1/M2/M3
+    else:
+        device = "cpu" 
+        compute_type = "int8"   # Intel/AMD CPU
+    
+    model = WhisperModel(
+        model_size, 
+        device=device, 
+        compute_type=compute_type,
+        num_workers=1,                   # Konsistentere Ergebnisse
+        cpu_threads=4 if device == "cpu" else 0  # Optimiert für Multi-Core
+    )
+    
+    # Optimierte Transkriptionsparameter
+    segments, _ = model.transcribe(
+        audio_path, 
+        word_timestamps=True,
+        beam_size=5,                     # Bessere Suche (default: 5)
+        temperature=0.0,                 # Deterministische Ausgabe
+        compression_ratio_threshold=2.4, # Weniger aggressive Kompression
+        log_prob_threshold=-1.0,         # Konservativere Token-Auswahl
+        no_speech_threshold=0.6,         # Bessere Spracherkennung
+        condition_on_previous_text=True, # Kontext nutzen
+        vad_filter=True,                 # Voice Activity Detection
+        vad_parameters=dict(
+            min_silence_duration_ms=500, # Längere Pausen für bessere Segmentierung
+            speech_pad_ms=400            # Mehr Padding um Sprache
+        )
+    )
 
     words: list[Dict] = []
     for seg in segments:
         for w in seg.words:
             if w.end <= skip_seconds:           # Titelteil überspringen
                 continue
+            
             words.append({
                 "word"      : w.word.strip(),
                 "start_time": w.start,          # → absolute Zeit

@@ -98,6 +98,8 @@ captions_font_family = { optional = false, default = "Roboto-Regular", example =
 captions_font_size = { optional = false, default = 24, example = 24, explanation = "Font size in pixels for caption text" }
 captions_color = { optional = false, default = "FFFFFF", example = "FFFFFF", explanation = "Hex color code for normal caption text" }
 captions_highlight_color = { optional = false, default = "FFFF00", example = "FF0000", explanation = "Hex color code to highlight the currently spoken word" }
+caption_mode = { optional = true, default = "whisper", options = ["whisper", "default_PNG"], explanation = "Caption generation method: whisper for AI-transcribed captions or default_PNG for manual captions" }
+whisper_model_size = { optional = true, default = "base", options = ["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"], explanation = "Whisper model size - larger models are more accurate but slower" }
 ###############################################################################
 #  Captions / Subtitle Rendering
 ###############################################################################
