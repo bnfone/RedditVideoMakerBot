@@ -144,7 +144,7 @@ def create_dynamic_thumbnail(
             title_lines.append('')
     
     title_line_height = getheight(title_font, "A") + 12
-    title_height = len(title_lines) * title_line_height + int(padding * 2) if title_lines else 0  # More spacing after title
+    title_height = len(title_lines) * title_line_height + int(padding * 2.2) if title_lines else 0  # Slightly more spacing after title
     
     # Calculate total dynamic height
     total_height = int(
@@ -206,7 +206,8 @@ def create_dynamic_thumbnail(
         
         # Bottom metrics (upvotes/comments) at the very bottom 
         if upvotes_comments_text:
-            bottom_y = total_height - padding * 2 - getheight(metrics_font, upvotes_comments_text)
+            # Match the top spacing: add a bit more space to visually match the top
+            bottom_y = total_height - int(padding * 2.5) - getheight(metrics_font, upvotes_comments_text)
             _draw_pilmoji_text(p, (padding * 2, bottom_y), upvotes_comments_text, 
                              font=metrics_font, fill=secondary_text_color, align="left")
     

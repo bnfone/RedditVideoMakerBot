@@ -6,6 +6,7 @@ from pilmoji import Pilmoji
 from rich.progress import track
 from utils.fonts import getheight, getsize
 from TTS.engine_wrapper import process_text
+from utils import settings
 
 
 
@@ -16,17 +17,26 @@ def _draw_pilmoji_text(p: Pilmoji, pos, *args, **kwargs):
     p.text((int(round(x)), int(round(y))), *args, **kwargs)
 
 
+def parse_color(color_str):
+    """Parse color string (R,G,B format) to tuple"""
+    try:
+        parts = [int(x.strip()) for x in color_str.split(',')]
+        return tuple(parts[:3])  # Ensure only RGB, not RGBA
+    except:
+        return (255, 255, 255)  # Fallback to white
+
+
 def create_comment_card(
     comment_data: dict,
     reddit_obj: dict = None,
     width: int = 1080,  # Match config resolution
-    background_color: tuple = (33, 33, 36, 255),  # Dark theme
+    background_color: tuple = None,  # Will be read from config
     text_color: tuple = (240, 240, 240, 255),     # Light text
     author_color: tuple = (255, 255, 255, 255),   # White for author (prominent)
     upvote_color: tuple = (255, 140, 0, 255),     # Orange for upvotes
     title_color: tuple = (150, 150, 150, 255),    # Gray for post title
-    corner_radius: int = 20,
-    padding: int = 40
+    corner_radius: int = 45,  # Match thumbnail radius
+    padding: int = 25  # Match thumbnail padding
 ) -> Image.Image:
     """
     Create a comment card with dynamic height, rounded corners, dark background
@@ -44,12 +54,21 @@ def create_comment_card(
         padding: Internal padding
     """
     
+    # Get configuration colors to match thumbnail
+    thumbnail_config = settings.config["settings"]["thumbnail"]
+    if background_color is None:
+        bg_color_rgb = parse_color(thumbnail_config.get("background_color", "33,33,36"))
+        background_color = (*bg_color_rgb, 255)  # Add alpha channel
+    
+    primary_text_color = parse_color(thumbnail_config.get("primary_text_color", "255,255,255"))
+    secondary_text_color = parse_color(thumbnail_config.get("secondary_text_color", "180,180,180"))
+    
     # Load fonts with proper sizing
     try:
         title_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 28)  # Smaller, less prominent
         author_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 36)     # Prominent author
         text_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 40)
-        upvote_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 28)
+        upvote_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 28)  # Match thumbnail metrics font
         
         # Note: Emoji handling is done via Pilmoji, no separate emoji font needed
             
@@ -73,15 +92,10 @@ def create_comment_card(
         title_char_width = getsize(title_font, "A")[0] or 15
         title_wrap_width = max(60, int(available_width // title_char_width * 1.2))  # More characters per line
         
-        # Preserve original line breaks in title too
-        original_title_lines = title_text.split('\n')
-        title_lines = []
-        for original_line in original_title_lines:
-            if original_line.strip():
-                wrapped_lines = textwrap.wrap(original_line, width=title_wrap_width)
-                title_lines.extend(wrapped_lines if wrapped_lines else [''])
-            else:
-                title_lines.append('')
+        # Limit title to one line with ellipsis if too long
+        if len(title_text) > title_wrap_width:
+            title_text = title_text[:title_wrap_width-3] + "..."
+        title_lines = [title_text]
         title_line_height = getheight(title_font, "A") + 8  # Smaller spacing
         title_height = len(title_lines) * title_line_height + padding // 2  # Less padding
     
@@ -160,11 +174,16 @@ def create_comment_card(
             _draw_pilmoji_text(p, (padding * 2, current_y), line, font=text_font, fill=text_color, align="left")
             current_y += text_line_height
         
-        # Draw upvote count (bottom left) - using better symbol
+        # Draw upvote count (bottom left) - using same style as thumbnail
         upvotes = comment_data.get('comment_score', 0)
-        upvote_text = f"⬆️ {upvotes} upvotes"  # Use actual emoji like fancy_thumbnail
-        upvote_y = total_height - padding * 2 - getheight(upvote_font, upvote_text)
-        _draw_pilmoji_text(p, (padding * 2, upvote_y), upvote_text, font=upvote_font, fill=upvote_color, align="left")
+        # Format upvotes like in thumbnail
+        if upvotes >= 1000:
+            upvotes_str = f"{upvotes/1000:.1f}k" if upvotes < 10000 else f"{upvotes//1000}k"
+        else:
+            upvotes_str = str(upvotes)
+        upvote_text = f"⬆️ {upvotes_str}"  # Only emoji and number, no "upvotes" text
+        upvote_y = total_height - int(padding * 2.5) - getheight(upvote_font, upvote_text)  # Match thumbnail spacing
+        _draw_pilmoji_text(p, (padding * 2, upvote_y), upvote_text, font=upvote_font, fill=secondary_text_color, align="left")
     
     return img
 
