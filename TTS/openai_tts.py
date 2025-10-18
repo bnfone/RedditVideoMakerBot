@@ -4,17 +4,23 @@ from utils import settings
 
 class OpenAITTS:
     """
-    A Text-to-Speech engine that uses an OpenAI-like TTS API endpoint to generate audio from text.
+    A Text-to-Speech engine that uses OpenAI TTS API to generate audio from text.
+    
+    Supports all OpenAI TTS models:
+    - tts-1: Fast generation, good quality (4096 char limit)
+    - tts-1-hd: Highest quality, slower (4096 char limit)  
+    - gpt-4o-mini-tts: Fast + high quality + instructability (2000 token/~1500 char limit)
     
     Attributes:
-        max_chars (int): Maximum number of characters allowed per API call.
+        max_chars (int): Base maximum characters (adjusted per model in run()).
         api_key (str): API key loaded from settings.
         api_url (str): The complete API endpoint URL, built from a base URL provided in the config.
         available_voices (list): Static list of supported voices (according to current docs).
     """
     def __init__(self):
-        # Set maximum input size based on API limits (4096 characters per request)
-        self.max_chars = 4096
+        # Set maximum input size based on API limits 
+        # (4096 characters for tts-1/tts-1-hd, 2000 tokens for gpt-4o-mini-tts)
+        self.max_chars = 4096  # Will be adjusted per model in run() method
         self.api_key = settings.config["settings"]["tts"].get("openai_api_key")
         if not self.api_key:
             raise ValueError("No OpenAI API key provided in settings! Please set 'openai_api_key' in your config.")
@@ -63,15 +69,43 @@ class OpenAITTS:
 
         # Select the model from configuration; default to 'tts-1'
         model = settings.config["settings"]["tts"].get("openai_model", "tts-1")
+        
+        # Adjust max_chars based on model
+        if model == "gpt-4o-mini-tts":
+            # gpt-4o-mini-tts has a 2000 token limit (roughly 1500-1600 characters)
+            current_max_chars = 1500
+        else:
+            # tts-1 and tts-1-hd have 4096 character limit
+            current_max_chars = 4096
+            
+        # Check if text exceeds model limit
+        if len(text) > current_max_chars:
+            print(f"Warning: Text length ({len(text)}) exceeds {model} limit ({current_max_chars}). Text will be truncated.")
+            text = text[:current_max_chars]
+        
+        # Get speed from configuration; default to 1.0 (normal speed)
+        speed = settings.config["settings"]["tts"].get("openai_speed", 1.0)
+        
+        # Validate speed range as per OpenAI API (0.25 to 4.0)
+        if not (0.25 <= speed <= 4.0):
+            print(f"Warning: OpenAI TTS speed {speed} is outside valid range (0.25-4.0). Using default 1.0.")
+            speed = 1.0
 
-        # Create Payload for API-request
+        # Create base payload for API-request
         payload = {
             "model": model,
             "voice": voice,
             "input": text,
-            "speed": 1.1, 
+            "speed": speed, 
             "response_format": "mp3"  # allowed formats: "mp3", "aac", "opus", "flac", "pcm" or "wav"
         }
+        
+        # Add instructions for gpt-4o-mini-tts if configured
+        if model == "gpt-4o-mini-tts":
+            instructions = settings.config["settings"]["tts"].get("openai_instructions", "")
+            if instructions and instructions.strip():
+                payload["instructions"] = instructions.strip()
+                print(f"Using instructions for {model}: {instructions[:50]}...")  # Show first 50 chars
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"

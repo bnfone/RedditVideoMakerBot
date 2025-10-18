@@ -1,4 +1,5 @@
 import os
+import re
 import textwrap
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -103,8 +104,24 @@ def create_comment_card(
     author_text = f"u/{comment_data.get('comment_author', 'Unknown')}"
     author_height = getheight(author_font, author_text) + padding // 2
     
-    # Main comment text (don't process_text to keep emojis!)
-    comment_text = comment_data.get('comment_body', '')
+    # Main comment text - try to get original text, fallback to processed text
+    comment_text = comment_data.get('original_comment_body', comment_data.get('comment_body', ''))
+    
+    # If we only have the TTS-processed text, try to restore some formatting
+    if 'original_comment_body' not in comment_data and '. ' in comment_text:
+        # This is a heuristic to restore some line breaks from TTS processing
+        # Replace ". " with "\n" but be careful not to break normal sentences
+        lines = comment_text.split('. ')
+        restored_lines = []
+        for i, line in enumerate(lines):
+            if i < len(lines) - 1:  # Not the last line
+                # Add period back if line doesn't end with punctuation
+                if line and line[-1] not in '.!?':
+                    line += '.'
+                restored_lines.append(line)
+            else:
+                restored_lines.append(line)
+        comment_text = '\n'.join(restored_lines)
     # Calculate wrap width more accurately to use full available space - aggressive
     char_width = getsize(text_font, "A")[0] or 15
     text_wrap_width = max(50, int(available_width // char_width * 1.3))  # Much more characters per line
@@ -114,10 +131,10 @@ def create_comment_card(
     text_lines = []
     for original_line in original_lines:
         if original_line.strip():  # If line has content
-            wrapped_lines = textwrap.wrap(original_line, width=text_wrap_width)
-            text_lines.extend(wrapped_lines if wrapped_lines else [''])  # Keep empty lines
-        else:  # Empty line - preserve it
-            text_lines.append('')
+            wrapped_lines = textwrap.wrap(original_line, width=text_wrap_width, break_long_words=False, break_on_hyphens=False)
+            text_lines.extend(wrapped_lines if wrapped_lines else [original_line])  # Keep original if wrapping fails
+        else:  # Empty line - preserve it as a proper empty line
+            text_lines.append(' ')  # Use single space instead of empty string for better rendering
     text_line_height = getheight(text_font, "A") + 12
     content_height = len(text_lines) * text_line_height
     

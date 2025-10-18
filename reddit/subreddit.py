@@ -159,6 +159,7 @@ def get_subreddit_threads(POST_ID: str):
                             content["comments"].append(
                                 {
                                     "comment_body": top_level_comment.body,
+                                    "original_comment_body": top_level_comment.body,  # Keep original for comment cards
                                     "comment_url": top_level_comment.permalink,
                                     "comment_id": top_level_comment.id,
                                     "comment_author": top_level_comment.author.name if top_level_comment.author else "Unknown",
