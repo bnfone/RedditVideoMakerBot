@@ -55,8 +55,8 @@ def create_dynamic_thumbnail(
     text,
     reddit_metrics: dict = None,
     width: int = 1080,
-    corner_radius: int = 25,
-    padding: int = 40
+    corner_radius: int = 45,
+    padding: int = 25
 ) -> Image.Image:
     """
     Create dynamic thumbnail with flexible height like comment cards
@@ -73,22 +73,22 @@ def create_dynamic_thumbnail(
     try:
         channel_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 32)
         title_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Bold.ttf"), 48)
-        metrics_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 24)
+        metrics_font = ImageFont.truetype(os.path.join("fonts", "Roboto-Regular.ttf"), 28)
     except OSError:
         channel_font = ImageFont.load_default()
         title_font = ImageFont.load_default()
         metrics_font = ImageFont.load_default()
     
     # Calculate content dimensions - use more aggressive space usage
-    available_width = width - 3 * padding  # Less conservative padding
+    available_width = int(width - 2.5 * padding)  # Less conservative padding
     profile_size = 80
     
     # Profile + Channel name section (side by side)
     channel_name = settings.config["settings"]["channel_name"]
     profile_section_height = max(
         profile_size,  # Profile image height
-        getheight(channel_font, channel_name) + getheight(metrics_font, "A") + 16  # Channel name + subreddit/author with spacing
-    ) + padding
+        getheight(channel_font, channel_name) + getheight(metrics_font, "A") + 12  # Channel name + subreddit/author with spacing
+    ) + padding // 2
     
     # Reddit metrics section (subreddit + author) - will be positioned next to profile
     subreddit_author_text = ""
@@ -127,7 +127,7 @@ def create_dynamic_thumbnail(
             
         upvotes_comments_text = f"⬆️ {upvotes_str} • 💬 {comments_str}"
     
-    bottom_metrics_height = getheight(metrics_font, upvotes_comments_text) + padding if upvotes_comments_text else 0  # Back to normal
+    bottom_metrics_height = getheight(metrics_font, upvotes_comments_text) + padding if upvotes_comments_text else 0  # Normal spacing
     
     # Title section with line break preservation - USE FULL WIDTH
     char_width = getsize(title_font, "A")[0] or 15
@@ -144,11 +144,11 @@ def create_dynamic_thumbnail(
             title_lines.append('')
     
     title_line_height = getheight(title_font, "A") + 12
-    title_height = len(title_lines) * title_line_height + padding * 2 if title_lines else 0  # Extra spacing after title
+    title_height = len(title_lines) * title_line_height + int(padding * 2) if title_lines else 0  # More spacing after title
     
     # Calculate total dynamic height
-    total_height = (
-        padding * 2 +  # Top and bottom
+    total_height = int(
+        padding * 2 +  # Normal top and bottom padding
         profile_section_height +  # Profile + channel name + subreddit/author
         title_height +  # Title section
         bottom_metrics_height  # Upvotes/comments at bottom
@@ -184,14 +184,14 @@ def create_dynamic_thumbnail(
         img.paste(profile_img, (profile_x, profile_y), profile_img)
         
         # Channel name (next to profile) 
-        channel_x = profile_x + profile_size + padding // 2
-        channel_y = profile_y + 10  # Slight offset to align nicely
+        channel_x = int(profile_x + profile_size + padding // 3)
+        channel_y = profile_y + 8  # Reduced offset to align nicely
         _draw_pilmoji_text(p, (channel_x, channel_y), 
                           channel_name, font=channel_font, fill=primary_text_color, align="left")
         
         # Subreddit/Author (under channel name)
         if subreddit_author_text:
-            subreddit_y = channel_y + getheight(channel_font, channel_name) + 8
+            subreddit_y = channel_y + getheight(channel_font, channel_name) + 6
             _draw_pilmoji_text(p, (channel_x, subreddit_y), subreddit_author_text, 
                              font=metrics_font, fill=secondary_text_color, align="left")
         
@@ -206,7 +206,7 @@ def create_dynamic_thumbnail(
         
         # Bottom metrics (upvotes/comments) at the very bottom 
         if upvotes_comments_text:
-            bottom_y = total_height - padding * 2 - getheight(metrics_font, upvotes_comments_text)  # Back to original spacing from bottom
+            bottom_y = total_height - padding * 2 - getheight(metrics_font, upvotes_comments_text)
             _draw_pilmoji_text(p, (padding * 2, bottom_y), upvotes_comments_text, 
                              font=metrics_font, fill=secondary_text_color, align="left")
     
